@@ -63,14 +63,16 @@ class MqttExporter:
         self.mqtt_host = os.environ.get('MQTT_HOST', default='localhost')
         self.mqtt_port = int(os.environ.get('MQTT_PORT', default=1883))
         self.keep_alive = int(os.environ.get('MQTT_KEEP_ALIVE', default=60))
-        self.mqtt_topic = os.environ.get('MQTT_TOPIC', default='gps/sensor_data')
+        self.mqtt_topic = os.environ.get('MQTT_TOPIC', default='sensor/${device_id}/${data_id}')
 
         self.client = mqtt.Client(protocol=mqtt.MQTTv311)
         self.client.connect(self.mqtt_host, port=self.mqtt_port , keepalive=self.keep_alive)
 
     def export(self, message):
+        data_id = message['data_id']
+        topic = Template(self.mqtt_topic).substitute(device_id=self.device_id, data_id=data_id, **os.environ)
         output_string = json.dumps(message)
-        self.client.publish(self.mqtt_topic, output_string)
+        self.client.publish(topic, output_string)
 
 
 class LocalExporter:
