@@ -28,6 +28,10 @@ WindowsではDockerにUSBをマウントするのが手間なので、ViewerとM
 - OUTPUT_FOLDER デフォルトで、data/${device_id}
 - OUTPUT_FOLDER_FORMAT デフォルトで、%Y/%m/%d/%H
 - OUTPUT_FILE_FORMAT　デフォルトで、%Y%m%d%H%M%S%f-${data_id}-${id}.json
+- MQTT_HOST デフォルトで、localhost
+- MQTT_PORT デフォルトで、1883
+- MQTT_KEEP_ALIVE デフォルトで60秒
+- MQTT_TOPIC デフォルトで'gps/sensor_data'
 - LOG_LEVEL デフォルトでINFO
 
 
@@ -37,6 +41,10 @@ WindowsではDockerにUSBをマウントするのが手間なので、ViewerとM
 - データをJson形式でフォルダに出力
 - MQTTにデータ更新トピックでPublish（指定間隔）
 - 指定アルゴリズムで、データを解析・新たなデータ種別として格納
+
+- OUTPUT_FOLDER デフォルトで、data/${device_id}
+- OUTPUT_FOLDER_FORMAT デフォルトで、%Y/%m/%d/%H
+- OUTPUT_FILE_FORMAT　デフォルトで、%Y%m%d%H%M%S%f-${data_id}-${id}.json
 
 ※データ解析は後日実装
 

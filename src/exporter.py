@@ -37,7 +37,6 @@ class LocalExporter:
     """
     ローカル出力クラス
     """
-
     def __init__(self, device_id: str):
         """
         環境変数
