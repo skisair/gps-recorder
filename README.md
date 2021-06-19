@@ -22,6 +22,15 @@ WindowsではDockerにUSBをマウントするのが手間なので、ViewerとM
 
 ※デバイスIDは今回は環境変数として付与する。
 
+環境変数
+- GPS_PORT　必須：Macでは/dev/tty.usbmodem14101など、WindowsではCOM3,COM4など
+- DEVICE_ID デフォルトでマシン名取得
+- OUTPUT_FOLDER デフォルトで、data/${device_id}
+- OUTPUT_FOLDER_FORMAT デフォルトで、%Y/%m/%d/%H
+- OUTPUT_FILE_FORMAT　デフォルトで、%Y%m%d%H%M%S%f-${data_id}-${id}.json
+- LOG_LEVEL デフォルトでINFO
+
+
 ## データ格納プロセス
 - MQTTにデータトピックでSubscribe
 - 受信したメッセージをデータベースに格納
@@ -122,10 +131,10 @@ $GPVTG,240.3,T,,M,000.0,N,000.0,K,A*08
 | true_course |  | T | - |
 | m_course |  |  |  |
 | mag_course |  | M | - |
-| speed | 移動速度 | 000.0 | 000.0 knot |
-| knot |  | N | knot |
-| speed |  | 000.0 | 000.0 km/h |
-| kiro_meter |  | K | kiro |
+| k_speed | 移動速度(Knot) | 000.0 | 000.0 knot |
+| speed_k_unit | 単位(Knot) | N | knot |
+| m_speed | 移動速度(Km) | 000.0 | 000.0 km/h |
+| speed_m_unit | 単位(Km/h) | K | kiro |
 | mode |  | A | A:Autonomous / D:Differential / E:Estimated |
 | check_sum |  | 08 |  |
 
@@ -170,7 +179,7 @@ $GPGSV,4,4,13,30,29,291,18*40
 
 | item_id | item_name | sample | |
 | --- | --- | --- | --- |
-| data_id | データ種別ID | $GPGSA | |
+| data_id | データ種別ID | $GPGSV | |
 | total_messages | 総メッセージ数 | 4 | |
 | message_number | メッセージ番号 | 1 | |
 | total_sv | ビュー内の総衛星数 | 13 |  |
@@ -210,10 +219,7 @@ $GPGLL,3537.51961,N,13941.60464,E,013728.00,A,A*60
 | check_sum |  | 60 |  |
 
 
-### $GPTXT
-
-
 参考元URL
-https://www.hiramine.com/physicalcomputing/general/gps_nmeaformat.html
-http://www.spa-japan.co.jp/tech/Tech103_UbloxNmea.html
-http://aprs.gids.nl/nmea/
+- https://www.hiramine.com/physicalcomputing/general/gps_nmeaformat.html
+- http://www.spa-japan.co.jp/tech/Tech103_UbloxNmea.html
+- http://aprs.gids.nl/nmea/
