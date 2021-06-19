@@ -7,6 +7,7 @@ from datetime import datetime, timezone, timedelta
 from typing import List, Dict
 
 import serial
+import paho.mqtt.client as mqtt
 
 # Macの場合、 /dev/tty.usbserial-* の形で認識される。WindowsならCOM3とかCOM4とかになるはず
 # ls /dev/tty.usbserial* で出てきたポート名を入れること
@@ -20,6 +21,23 @@ logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
 streamHandler = logging.StreamHandler()
 logger.addHandler(streamHandler)
+
+
+class MqttExporter:
+
+    def __init__(self, device_id: str):
+        self.device_id = device_id
+        self.mqtt_host = os.environ.get('MQTT_HOST', default='localhost')
+        self.mqtt_port = int(os.environ.get('MQTT_PORT', default=1883))
+        self.keep_alive = int(os.environ.get('MQTT_KEEP_ALIVE', default=60))
+        self.mqtt_topic = os.environ.get('MQTT_TOPIC', default='gps/sensor_data')
+
+        self.client = mqtt.Client(protocol=mqtt.MQTTv311)
+        self.client.connect(self.mqtt_host, port=self.mqtt_port , keepalive=self.keep_alive)
+
+    def export(self, message):
+        output_string = json.dumps(message)
+        self.client.publish(self.mqtt_topic, output_string)
 
 
 class LocalExporter:
@@ -377,9 +395,11 @@ class GpsTracker:
 
 if __name__ == '__main__':
     device_id = DEVICE_ID
-    exporter = LocalExporter(device_id)
+    local_exporter = LocalExporter(device_id)
+    mqtt_exporter = MqttExporter(device_id)
     gps = GpsTracker(device_id, GPS_PORT)
-    gps.add(exporter)
+    gps.add(local_exporter)
+    gps.add(mqtt_exporter)
     try:
         gps.run()
     except KeyboardInterrupt:
