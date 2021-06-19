@@ -5,7 +5,8 @@ from datetime import datetime, timezone, timedelta
 
 import paho.mqtt.client as mqtt
 
-from exporter import LocalExporter
+from exporter import LocalExporter, AzureExporter
+
 
 LOG_LEVEL = os.environ.get('LOG_LEVEL', default=logging.INFO)
 
@@ -45,8 +46,12 @@ if __name__ == '__main__':
     mqtt_topic = os.environ.get('MQTT_TOPIC', default='gps/sensor_data')
 
     event_handler = GpsEventHandler()
-    exporter = LocalExporter(device_id)
-    event_handler.add(exporter)
+
+    local_exporter = LocalExporter(device_id)
+    event_handler.add(local_exporter)
+
+    azure_exporter = AzureExporter()
+    event_handler.add(azure_exporter)
 
     client = mqtt.Client(protocol=mqtt.MQTTv311)
     client.topic = mqtt_topic

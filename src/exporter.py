@@ -6,6 +6,8 @@ import uuid
 from string import Template
 
 import paho.mqtt.client as mqtt
+from azure.cosmosdb.table.tableservice import TableService
+
 
 LOG_LEVEL = os.environ.get('LOG_LEVEL', default=logging.INFO)
 
@@ -14,6 +16,44 @@ logger = logging.getLogger(__name__)
 logger.setLevel(LOG_LEVEL)
 streamHandler = logging.StreamHandler()
 logger.addHandler(streamHandler)
+
+CONMECTION_STRING = \
+    'DefaultEndpointsProtocol=http;' \
+    'AccountName=devstoreaccount1;' \
+    'AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;' \
+    'BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;' \
+    'QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;' \
+    'TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;'
+
+
+class AzureExporter:
+
+    def __init__(self):
+        self.connect_string = os.environ.get('AZURE_STORAGE_CONNECT_STRING',
+                                             default=CONMECTION_STRING)
+        self.table_service = TableService(connection_string=CONMECTION_STRING)
+        self.mdevice_table_name = 'mdevice'
+        self.mdatatable_name = 'mdata'
+        self.tdata_table_name = 'tdata'
+        __ = self.table_service.create_table(self.mdevice_table_name)
+        __ = self.table_service.create_table(self.mdatatable_name)
+        __ = self.table_service.create_table(self.tdata_table_name)
+
+    def export(self, message):
+        """
+        Azureへデータ出力
+        :param message:
+        :return:
+        """
+        '''
+        - PK: デバイスID-データ種別
+        - RK: タイムスタンプ
+        '''
+        partition_key = message['device_id'] + '_' + message['data_id']
+        row_key = message['local_time']
+        message['PartitionKey'] = partition_key
+        message['RowKey'] = row_key
+        self.table_service.insert_or_replace_entity(self.tdata_table_name , message)
 
 
 class MqttExporter:
