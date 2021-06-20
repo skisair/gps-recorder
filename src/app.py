@@ -123,7 +123,7 @@ CONNECTION_STRING = \
     'QueueEndpoint=http://127.0.0.1:10001/devstoreaccount1;' \
     'TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;'
 
-
+MQTT_CLIENT_ID = os.environ.get('MQTT_CLIENT_ID', default='app')
 MQTT_HOST = os.environ.get('MQTT_HOST', default='localhost')
 MQTT_PORT = int(os.environ.get('MQTT_PORT', default=1883))
 MQTT_KEEP_ALIVE = int(os.environ.get('MQTT_KEEP_ALIVE', default=60))
@@ -133,25 +133,52 @@ def on_message(client, userdata, message):
     print(message)
 
 
-mqtt_client = mqtt.Client(protocol=mqtt.MQTTv311)
+def on_connect(client, userdata, flags, respons_code):
+    print(f'connected to mqtt server:{respons_code}')
+    if respons_code == 0:
+        state.mqtt_connected = True
+
+
+#@st.cache(allow_output_mutation=True)
+def restore_client(topic):
+    print('mqtt restore_client')
+    mqtt_client = mqtt.Client(protocol=mqtt.MQTTv311)
+    mqtt_client.topic = topic
+    mqtt_client.connect(MQTT_HOST, MQTT_PORT)
+    return mqtt_client
+
+
+def get_mqtt_client(topic):
+    print('mqtt get_mqtt_client')
+    mqtt_client = restore_client(topic)
+    mqtt_client.on_connect = on_connect
+    mqtt_client.on_message = on_message
+    return mqtt_client
+
 
 def main():
-    pd.options.display.float_format = '{:.6f}'.format
+    st.set_page_config(page_title='GPS RECORDER')
+    st.title('GPS RECORDER')
+
     connect_string = os.environ.get('AZURE_STORAGE_CONNECT_STRING', default=CONNECTION_STRING)
     if state.table_service is None:
         state.table_service = TableService(connection_string=connect_string)
 
-    # mqtt_client = mqtt.Client(protocol=mqtt.MQTTv311)
-    mqtt_client = mqtt.Client(protocol=mqtt.MQTTv311)
-    mqtt_client.topic = 'sensor/{device_id}/{data_id}'.format(device_id=state.device_id, data_id=state.data_id)
-    print(mqtt_client.topic)
-    #state.mqtt_client.on_connect = on_connect
-    mqtt_client.on_message = on_message
-    mqtt_client.connect(MQTT_HOST, port=MQTT_PORT, keepalive=MQTT_KEEP_ALIVE)
-
-    st.set_page_config(page_title='GPS RECORDER')
-    st.title('GPS RECORDER')
     display_sidebar(dataset, state)
+
+    pd.options.display.float_format = '{:.6f}'.format
+    # mqtt_client = mqtt.Client(protocol=mqtt.MQTTv311)
+    topic = 'sensor/{device_id}/{data_id}'.format(device_id=state.device_id, data_id=state.data_id)
+    mqtt_client = get_mqtt_client(topic)
+    timeout = 30
+    while not mqtt_client.is_connected() and timeout:
+        print('not connected.')
+        mqtt_client.loop(timeout=1)
+        timeout -= 1
+
+
+    print(topic)
+
     state.selected_datas = dataset.select(state.device_id, state.data_id, state)
     left_column, right_column = st.beta_columns(2)
     pict_index = state.pict_index if state.pict_index else 0
@@ -221,6 +248,7 @@ def main():
         # st.map(df)
     #mqtt_client.loop_forever()
     state.sync()
+    mqtt_client.loop_forever()
 
 
 if __name__ == "__main__":

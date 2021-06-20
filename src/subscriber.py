@@ -3,6 +3,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 
 import paho.mqtt.client as mqtt
+import time
 
 LOG_LEVEL = os.environ.get('LOG_LEVEL', default=logging.INFO)
 
@@ -37,4 +38,5 @@ if __name__ == '__main__':
     client.connect(HOST, port=PORT, keepalive=KEEP_ALIVE)
 
     # ループ
-    client.loop_forever()
+    # client.loop_forever()
+    time.sleep(3600)
