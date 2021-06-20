@@ -124,20 +124,20 @@ class GpsTracker:
             logger.warning(f'GPGGA staus is V.')
         else:
             lat = float(values[1]) / 100.0
-            lng = float(values[3]) / 100.0
+            lon = float(values[3]) / 100.0
             lat_d = values[2]
-            lng_d = values[4]
+            lon_d = values[4]
             if lat_d == 'S':
                 lat = -lat
-            if lng_d == 'W':
-                lng = -lng
+            if lon_d == 'W':
+                lon = -lon
             message = {
                 'data_id': data_id,
                 'gps_date_time': gps_date_time,
                 'lat': lat,
                 # 'lat_d': values[2],
-                'lng': lng,
-                # 'lng_d': values[4],
+                'lon': lon,
+                # 'lon_d': values[4],
                 # 'utc_time': values[5],
                 # 'warning': values[6],
                 'mode': values[7],
@@ -247,18 +247,18 @@ class GpsTracker:
             logger.warning(f'GPGGA is not valid.')
         else:
             lat = float(values[2]) / 100.0
-            lng = float(values[4]) / 100.0
+            lon = float(values[4]) / 100.0
             lat_d = values[3]
-            lng_d = values[5]
+            lon_d = values[5]
             if lat_d == 'S':
                 lat = -lat
-            if lng_d == 'W':
-                lng = -lng
+            if lon_d == 'W':
+                lon = -lon
             message = {
                 'data_id': data_id,
                 'gps_date_time': gps_date_time,
                 'lat': lat,
-                'lng': lng,
+                'lon': lon,
                 'fix_quality': int(values[6]),
                 'num_satellites': int(values[7]),
                 'hdop': float(values[8]),
@@ -290,20 +290,20 @@ class GpsTracker:
             gps_date_time = datetime.now().isoformat()
         if warning == 'A':
             lat = float(values[3]) / 100.0
-            lng = float(values[5]) / 100.0
+            lon = float(values[5]) / 100.0
             lat_d = values[4]
-            lng_d = values[6]
+            lon_d = values[6]
             if lat_d == 'S':
                 lat = -lat
-            if lng_d == 'W':
-                lng = -lng
+            if lon_d == 'W':
+                lon = -lon
             speed = float(values[7])
             message = {
                 'data_id': data_id,
                 'gps_date_time': gps_date_time,
                 # 'warning': warning,
                 'lat': lat,
-                'lng': lng,
+                'lon': lon,
                 'speed': speed,
                 'mode': values[12],
             }
