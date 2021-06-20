@@ -26,9 +26,17 @@ class DeviceDataset:
     def __init__(self):
         self.data_dir = pathlib.Path('data/c01_p001')
         self.tdata_table_name = 'tdata'
+        self.mdevice_table_name = 'mdevice'
 
-    def get_device_list(self):
-        return ['ShoheinoAir-2']
+    def get_device_list(self, state):
+        device_list = {}
+        tasks = state.table_service.query_entities(self.mdevice_table_name)
+        for task in tasks:
+            if task['device_id'] in device_list:
+                pass
+            else:
+                device_list[task['device_id']] = task
+        return list(device_list.keys())
 
     def get_dataset_list(self, device_id):
         return ['GPRMC', 'GPVTG', 'GPGGA', 'GPGSA', 'GPGSV', 'GPGLL']
@@ -46,7 +54,6 @@ class DeviceDataset:
 
         partition_key = device_id + '_' + data_id
         filter_query = f"PartitionKey eq '{partition_key}' and RowKey gt '{state.from_key}' and RowKey lt '{state.to_key}'"
-        print(filter_query)
         tasks = state.table_service.query_entities(self.tdata_table_name, filter=filter_query)
         result = []
         for task in tasks:
@@ -57,8 +64,14 @@ class DeviceDataset:
             del task['etag']
             del task['device_id']
             del task['data_id']
+            if 'gps_date_time' in task:
+                del task['gps_date_time']
             result.append(task)
+        print(f'query:{filter_query} len:{len(result)}')
         df = pd.DataFrame(result)
+        if len(result) > 0:
+            df = df.set_index('local_time')
+            df = df.sort_index(ascending=False,)
         return {
             'datas': df,
             'picts': list(self.data_dir.glob(f'*')),
@@ -67,7 +80,7 @@ class DeviceDataset:
 
 def display_sidebar(dataset:DeviceDataset, state):
     st.sidebar.subheader("Device and Dataset")
-    state.device_id = st.sidebar.selectbox("Device", dataset.get_device_list())
+    state.device_id = st.sidebar.selectbox("Device", dataset.get_device_list(state))
     state.data_id = st.sidebar.selectbox("Dataset", dataset.get_dataset_list(state.device_id))
     state.realtime = st.sidebar.checkbox('Realtime')
     st.sidebar.subheader("Filters")
@@ -111,10 +124,30 @@ CONNECTION_STRING = \
     'TableEndpoint=http://127.0.0.1:10002/devstoreaccount1;'
 
 
+MQTT_HOST = os.environ.get('MQTT_HOST', default='localhost')
+MQTT_PORT = int(os.environ.get('MQTT_PORT', default=1883))
+MQTT_KEEP_ALIVE = int(os.environ.get('MQTT_KEEP_ALIVE', default=60))
+
+def on_message(client, userdata, message):
+    st.info(message)
+    print(message)
+
+
+mqtt_client = mqtt.Client(protocol=mqtt.MQTTv311)
+
 def main():
+    pd.options.display.float_format = '{:.6f}'.format
     connect_string = os.environ.get('AZURE_STORAGE_CONNECT_STRING', default=CONNECTION_STRING)
     if state.table_service is None:
         state.table_service = TableService(connection_string=connect_string)
+
+    # mqtt_client = mqtt.Client(protocol=mqtt.MQTTv311)
+    mqtt_client = mqtt.Client(protocol=mqtt.MQTTv311)
+    mqtt_client.topic = 'sensor/{device_id}/{data_id}'.format(device_id=state.device_id, data_id=state.data_id)
+    print(mqtt_client.topic)
+    #state.mqtt_client.on_connect = on_connect
+    mqtt_client.on_message = on_message
+    mqtt_client.connect(MQTT_HOST, port=MQTT_PORT, keepalive=MQTT_KEEP_ALIVE)
 
     st.set_page_config(page_title='GPS RECORDER')
     st.title('GPS RECORDER')
@@ -128,41 +161,66 @@ def main():
     # st.info(f'{state.from_key}-{state.to_key}')
     df = state.selected_datas['datas']
     if len(df.index) > 0:
-        right_column.dataframe(df)
-        figure = go.Figure()
-        for col in df.columns:
-            if col not in ['local_time','gps_date_time']:
-                figure.add_trace(go.Scatter(x=df['local_time'], y=df[col], name=col))
-            figure.update_layout(
-                xaxis=dict(
-                    rangeselector=dict(
-                        buttons=list([
-                            dict(count=1,
-                                 label="1m",
-                                 step="minute",
-                                 stepmode="backward"),
-                            dict(count=10,
-                                 label="10m",
-                                 step="minute",
-                                 stepmode="backward"),
-                            dict(count=1,
-                                 label="1h",
-                                 step="hour",
-                                 stepmode="backward"),
-                            dict(count=1,
-                                 label="1d",
-                                 step="day",
-                                 stepmode="backward"),
-                            ])
-                    ),
-                    rangeslider=dict(
-                        visible=True
-                    ),
-                    type="date"
-                )
-            )
+        if 'lat' in df.columns:
+            right_column.info(f"lat:{df['lat'][0]} lon{df['lon'][0]}")
 
-        st.plotly_chart(figure)
+        state.view_type = st.sidebar.selectbox("type", ['Spread', 'Graph', 'Map'])
+
+        if state.view_type == 'Spread':
+            st.dataframe(df)
+        elif state.view_type == 'Map':
+            st.map(df)
+        elif state.view_type == 'Graph':
+            figure = go.Figure()
+            for col in df.columns:
+                if col not in ['local_time','gps_date_time']:
+                    figure.add_trace(go.Scatter(x=df.index, y=df[col], name=col))
+
+                figure.update_layout(
+                    margin=dict(l=5, r=5, t=5, b=5),
+                    font=dict(
+                        size=10,
+                    ),
+                    legend={
+                        "orientation": "h",
+                        "yanchor": "bottom",
+                        "y": 1.02,
+                        "xanchor": "right",
+                        "x": 1,
+                    },
+                    xaxis=dict(
+                        rangeselector=dict(
+                            buttons=list([
+                                dict(count=1,
+                                     label="1m",
+                                     step="minute",
+                                     stepmode="backward"),
+                                dict(count=10,
+                                     label="10m",
+                                     step="minute",
+                                     stepmode="backward"),
+                                dict(count=1,
+                                     label="1h",
+                                     step="hour",
+                                     stepmode="backward"),
+                                dict(count=1,
+                                     label="1d",
+                                     step="day",
+                                     stepmode="backward"),
+                                ])
+                        ),
+                        rangeslider=dict(
+                            visible=True
+                        ),
+                        type="date"
+                    )
+                )
+
+            st.plotly_chart(figure)
+        # df = df.rename(columns={'lng': 'lon'})
+        # st.map(df)
+    #mqtt_client.loop_forever()
+    state.sync()
 
 
 if __name__ == "__main__":
