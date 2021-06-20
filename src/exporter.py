@@ -17,7 +17,7 @@ logger.setLevel(LOG_LEVEL)
 streamHandler = logging.StreamHandler()
 logger.addHandler(streamHandler)
 
-CONMECTION_STRING = \
+CONNECTION_STRING = \
     'DefaultEndpointsProtocol=http;' \
     'AccountName=devstoreaccount1;' \
     'AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;' \
@@ -30,8 +30,8 @@ class AzureExporter:
 
     def __init__(self):
         self.connect_string = os.environ.get('AZURE_STORAGE_CONNECT_STRING',
-                                             default=CONMECTION_STRING)
-        self.table_service = TableService(connection_string=CONMECTION_STRING)
+                                             default=CONNECTION_STRING)
+        self.table_service = TableService(connection_string=self.connect_string)
         self.mdevice_table_name = 'mdevice'
         self.mdatatable_name = 'mdata'
         self.tdata_table_name = 'tdata'
