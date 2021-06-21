@@ -1,5 +1,24 @@
 # gps-recorder
 
+## 起動方法
+MQTT/Azuriteの起動
+```bash
+docker compose up 
+```
+バックグラウンドサービスとして起動・停止する場合
+```bash
+docker compose up -d
+docker compose down
+```
+
+その他のサービスの起動
+```
+pip install -r requiremnts.txt
+
+
+python src/
+```
+
 ## Docker構成
 - UI（Flask）
 - MQTT

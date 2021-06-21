@@ -1,4 +1,5 @@
 import os
+import platform
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict
@@ -11,7 +12,7 @@ from exporter import LocalExporter, MqttExporter
 # ls /dev/tty.usbserial* で出てきたポート名を入れること
 
 GPS_PORT = os.environ.get('GPS_PORT', default='/dev/tty.usbmodem14101')
-DEVICE_ID = os.environ.get('DEVICE_ID', default=os.uname()[1])
+DEVICE_ID = os.environ.get('DEVICE_ID', default=platform.uname()[1])
 LOG_LEVEL = os.environ.get('LOG_LEVEL', default=logging.INFO)
 
 JST = timezone(timedelta(hours=+9), 'JST')

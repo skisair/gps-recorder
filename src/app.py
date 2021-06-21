@@ -1,8 +1,11 @@
 import os
 import pathlib
 from datetime import datetime, timezone, timedelta, time
+import base64
 
 import streamlit as st
+import numpy as np
+import cv2
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -39,6 +42,7 @@ class DeviceDataset:
         return list(device_list.keys())
 
     def get_dataset_list(self, device_id):
+        # TODO データリストのAzuriteからの取得
         return ['GPRMC', 'GPVTG', 'GPGGA', 'GPGSA', 'GPGSV', 'GPGLL']
 
     def select(self, device_id: str, data_id: str, state):
@@ -68,17 +72,28 @@ class DeviceDataset:
                 del task['gps_date_time']
             result.append(task)
         print(f'query:{filter_query} len:{len(result)}')
+
+        partition_key = device_id + '_' + 'CAM01'
+        filter_query = f"PartitionKey eq '{partition_key}' and RowKey gt '{state.from_key}' and RowKey lt '{state.to_key}'"
+        select_columns = 'RowKey'
+        tasks = state.table_service.query_entities(self.tdata_table_name, filter=filter_query, select=select_columns)
+        image_rowkey = []
+        for task in tasks:
+            image_rowkey.append(task['RowKey'])
+
         df = pd.DataFrame(result)
         if len(result) > 0:
             df = df.set_index('local_time')
             df = df.sort_index(ascending=False,)
         return {
             'datas': df,
-            'picts': list(self.data_dir.glob(f'*')),
+            #'picts': list(self.data_dir.glob(f'*')),
+            'picts': image_rowkey,
         }
 
 
 def display_sidebar(dataset:DeviceDataset, state):
+
     st.sidebar.subheader("Device and Dataset")
     state.device_id = st.sidebar.selectbox("Device", dataset.get_device_list(state))
     state.data_id = st.sidebar.selectbox("Dataset", dataset.get_dataset_list(state.device_id))
@@ -128,6 +143,7 @@ MQTT_HOST = os.environ.get('MQTT_HOST', default='localhost')
 MQTT_PORT = int(os.environ.get('MQTT_PORT', default=1883))
 MQTT_KEEP_ALIVE = int(os.environ.get('MQTT_KEEP_ALIVE', default=60))
 
+
 def on_message(client, userdata, message):
     st.info(message)
     print(message)
@@ -156,6 +172,20 @@ def get_mqtt_client(topic):
     return mqtt_client
 
 
+def open_image(device_id, row_key):
+    partition_key = device_id + '_' + 'CAM01'
+
+    filter_query = f"PartitionKey eq '{partition_key}' and RowKey eq '{row_key}'"
+    select_columns = 'image'
+    tasks = state.table_service.query_entities('tdata', filter=filter_query, select=select_columns)
+    for task in tasks:
+        jpg_as_text = task['image'].encode()
+    jpg_original = base64.b64decode(jpg_as_text)
+    jpg_as_np = np.frombuffer(jpg_original, dtype=np.uint8)
+    image_buffer = cv2.imdecode(jpg_as_np, cv2.IMREAD_COLOR)
+    image = cv2.cvtColor(image_buffer, cv2.COLOR_BGR2RGB)
+    return image
+
 def main():
     st.set_page_config(page_title='GPS RECORDER')
     st.title('GPS RECORDER')
@@ -176,13 +206,15 @@ def main():
         mqtt_client.loop(timeout=1)
         timeout -= 1
 
-
     print(topic)
 
     state.selected_datas = dataset.select(state.device_id, state.data_id, state)
     left_column, right_column = st.beta_columns(2)
     pict_index = state.pict_index if state.pict_index else 0
-    image = Image.open(state.selected_datas['picts'][pict_index])
+
+
+    # image = Image.open(state.selected_datas['picts'][pict_index])
+    image = open_image(state.device_id, state.selected_datas['picts'][pict_index])
     left_column.image(image)
     state.pict_index = left_column.slider('index',min_value=0, max_value=len(state.selected_datas['picts']), step=1)
     # st.info(f'{state.from_key}-{state.to_key}')
@@ -246,9 +278,9 @@ def main():
             st.plotly_chart(figure)
         # df = df.rename(columns={'lng': 'lon'})
         # st.map(df)
-    #mqtt_client.loop_forever()
+    # mqtt_client.loop_forever()
     state.sync()
-    mqtt_client.loop_forever()
+    # mqtt_client.loop_forever()
 
 
 if __name__ == "__main__":
