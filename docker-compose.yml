@@ -9,6 +9,9 @@ services:
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
+    networks:
+      - backend
+
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite
     restart: always
@@ -18,3 +21,29 @@ services:
       - "10002:10002"
     volumes:
       - ./azurite/data:/data
+    networks:
+      - backend
+
+  data_processor:
+    build:
+      context: ./
+      dockerfile: Docker/Dockerfile_data_processor
+    image: data_processor
+    restart: always
+    env_file:
+      - config/env/data_processor.env
+    volumes:
+      - ./data:/data
+    depends_on:
+      - mosquitto
+      - azurite
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.20.0/24

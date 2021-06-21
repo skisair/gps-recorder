@@ -6,6 +6,7 @@ import time
 import json
 import base64
 import argparse
+from string import Template
 
 from exporter import LocalExporter, MqttExporter
 
@@ -34,7 +35,7 @@ class CameraDevice:
         self.data_id = data_id
         self.running = True
         self.exporters = []
-        self.latlon = str((0.0,0.0))
+        self.latlon = (0.0,0.0)
         self.headless = True
         self.client = None
 
@@ -43,6 +44,7 @@ class CameraDevice:
         mqtt_port = int(os.environ.get('MQTT_PORT', default=1883))
         keep_alive = int(os.environ.get('MQTT_KEEP_ALIVE', default=60))
         subscribe_mqtt_topic = os.environ.get('MQTT_TOPIC', default='sensor/#')
+        subscribe_mqtt_topic = Template(subscribe_mqtt_topic).substitute(device_id=self.device_id, **os.environ)
         client = mqtt.Client(protocol=mqtt.MQTTv311)
         client.topic = subscribe_mqtt_topic
 
@@ -73,7 +75,7 @@ class CameraDevice:
         if data_id == 'GPRMC':
             lat = org_message['lat']
             lon = org_message['lon']
-            self.latlon = str((lat,lon))
+            self.latlon = (lat,lon)
             print(self.latlon)
 
     def run(self):
@@ -91,25 +93,29 @@ class CameraDevice:
                 'local_time': date_time}
             logger.debug(message)
             self._output(message)
-            sleep_seconds = (SEND_INTERVAL - (time.time() - shoot_time)) / 1000.0
+            sleep_seconds = (SEND_INTERVAL/1000.0 - (time.time() - shoot_time))
             print(len(jpg_as_text),sleep_seconds)
 
             if self.headless:
                 time.sleep(sleep_seconds)
             else:
-                while ((SEND_INTERVAL - (time.time() - shoot_time)) / 1000.0) > 0:
-                    b,g,r = 0, 255, 0
+                while (SEND_INTERVAL/1000.0 - (time.time() - shoot_time)) > 0:
+                    # print(SEND_INTERVAL/1000.0 - (time.time() - shoot_time))
+                    color_bgr = (0, 255, 0)
                     position = (75, 75)
-                    resized_image = cv2.putText(resized_image,
-                                               self.latlon,
-                                               position,
-                                               cv2.FONT_HERSHEY_SIMPLEX,
-                                               2, (b, g, r), 2, cv2.LINE_AA)
+                    font_size = 1.5
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    message = 'lat: ' + str(self.latlon[0])
+                    resized_image = cv2.putText(resized_image, message, position, font,
+                                                font_size, color_bgr, 2, cv2.LINE_AA)
+                    position = (75, 150)
+                    message = 'lon: ' + str(self.latlon[1])
+                    resized_image = cv2.putText(resized_image, message, position, font,
+                                                font_size, color_bgr, 2, cv2.LINE_AA)
                     cv2.imshow('Image', resized_image)
                     cv2.waitKey(1)
                     resized_image, size = self.get_image()
                     self.client.loop(0)
-
 
         self.capture.release()
 
