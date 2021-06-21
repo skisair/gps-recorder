@@ -40,6 +40,21 @@ services:
     networks:
       - backend
 
+  data_analyzer:
+    build:
+      context: ./
+      dockerfile: Docker/Dockerfile_data_analyzer
+    image: data_analyzer
+    ports:
+      - "8501:8501"
+    env_file:
+      - config/env/data_analyzer.env
+    depends_on:
+      - mosquitto
+      - azurite
+    networks:
+      - backend
+
 networks:
   backend:
     driver: bridge

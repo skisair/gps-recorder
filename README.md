@@ -15,8 +15,11 @@ docker compose down
 ```
 pip install -r requiremnts.txt
 
+source config/gps_device.env
+python src/gps_device.py
 
-python src/
+source config/camera_device.env
+python src/camera_device.py
 ```
 
 ## Docker構成
