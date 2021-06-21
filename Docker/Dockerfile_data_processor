@@ -1,0 +1,12 @@
+FROM python:3.9.4-slim
+
+COPY ./requirements.txt /tmp/
+RUN pip install --requirement /tmp/requirements.txt
+
+WORKDIR /opt/data_processor
+COPY src/ /opt/data_processor
+RUN mkdir log
+RUN mkdir data
+
+ENV PYTHONPATH=${PYTHONPATH}:.
+CMD ["python", "data_processor.py"]

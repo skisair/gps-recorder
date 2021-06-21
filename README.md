@@ -1,7 +1,7 @@
 # gps-recorder
 
 ## 起動方法
-MQTT/Azuriteの起動
+MQTT/Azurite/Data Analyzerの起動
 ```bash
 docker compose up 
 ```
