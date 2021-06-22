@@ -211,17 +211,15 @@ def main():
     state.selected_datas = dataset.select(state.device_id, state.data_id, state)
     left_column, right_column = st.beta_columns(2)
     pict_index = state.pict_index if state.pict_index else 0
-
-
-    # image = Image.open(state.selected_datas['picts'][pict_index])
     image = open_image(state.device_id, state.selected_datas['picts'][pict_index])
     left_column.image(image)
-    state.pict_index = left_column.slider('index',min_value=0, max_value=len(state.selected_datas['picts']), step=1)
+    state.pict_index = left_column.slider('index', min_value=0, max_value=len(state.selected_datas['picts']), value=pict_index, step=1)
     # st.info(f'{state.from_key}-{state.to_key}')
     df = state.selected_datas['datas']
     if len(df.index) > 0:
         if 'lat' in df.columns:
-            right_column.info(f"lat:{df['lat'][0]} lon{df['lon'][0]}")
+            right_column.info(f"lat:{df['lat'][0]}")
+            right_column.info(f"lon:{df['lon'][0]}")
 
         state.view_type = st.sidebar.selectbox("type", ['Spread', 'Graph', 'Map'])
 
@@ -242,10 +240,10 @@ def main():
                     ),
                     legend={
                         "orientation": "h",
-                        "yanchor": "bottom",
-                        "y": 1.02,
-                        "xanchor": "right",
-                        "x": 1,
+                        "yanchor": "top",
+                        "y": -0.5,
+                        "xanchor": "center",
+                        "x": 0.5,
                     },
                     xaxis=dict(
                         rangeselector=dict(
