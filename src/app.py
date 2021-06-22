@@ -8,11 +8,8 @@ import numpy as np
 import cv2
 
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-import plotly.express as px
 
 import pandas as pd
-from PIL import Image
 import paho.mqtt.client as mqtt
 from azure.cosmosdb.table.tableservice import TableService
 
@@ -20,9 +17,6 @@ from session import _get_state
 
 JST = timezone(timedelta(hours=+9), 'JST')
 
-# リアルタイム・時系列検索
-
-# グラフ表示
 
 # データ表示
 class DeviceDataset:
@@ -186,6 +180,15 @@ def open_image(device_id, row_key):
     image = cv2.cvtColor(image_buffer, cv2.COLOR_BGR2RGB)
     return image
 
+
+def get_pict_index(row_keys , pict_time:datetime ):
+    pict_key = pict_time.strftime('%Y%m%d%H%M%S%f')
+    for i, key in enumerate(row_keys):
+        if key >= pict_key:
+            break
+    return i
+
+
 def main():
     st.set_page_config(page_title='GPS RECORDER')
     st.title('GPS RECORDER')
@@ -211,9 +214,18 @@ def main():
     state.selected_datas = dataset.select(state.device_id, state.data_id, state)
     left_column, right_column = st.beta_columns(2)
     pict_index = state.pict_index if state.pict_index else 0
+    pict_time = datetime.strptime(state.selected_datas['picts'][pict_index], '%Y%m%d%H%M%S%f').replace(tzinfo=JST)
     image = open_image(state.device_id, state.selected_datas['picts'][pict_index])
     left_column.image(image)
-    state.pict_index = left_column.slider('index', min_value=0, max_value=len(state.selected_datas['picts']), value=pict_index, step=1)
+
+    from_time = datetime.strptime(state.selected_datas['picts'][0], '%Y%m%d%H%M%S%f').replace(tzinfo=JST)
+    to_time = datetime.strptime(state.selected_datas['picts'][-1], '%Y%m%d%H%M%S%f').replace(tzinfo=JST)
+    step = timedelta(seconds=1)
+
+    print(f"key:{state.selected_datas['picts'][0],} from_time:{from_time}")
+
+    state.pict_time = left_column.slider('camera time', min_value=from_time, max_value=to_time, value=pict_time, step=step, format='YYYY/MM/DD HH:mm:ss')
+    state.pict_index = get_pict_index(state.selected_datas['picts'], state.pict_time)
     # st.info(f'{state.from_key}-{state.to_key}')
     df = state.selected_datas['datas']
     if len(df.index) > 0:
@@ -221,64 +233,96 @@ def main():
             right_column.info(f"lat:{df['lat'][0]}")
             right_column.info(f"lon:{df['lon'][0]}")
 
-        state.view_type = st.sidebar.selectbox("type", ['Spread', 'Graph', 'Map'])
+        state.view_type = st.sidebar.selectbox("type", ['Spread', 'Graph', 'Map', 'Lat-Lon'])
 
         if state.view_type == 'Spread':
             st.dataframe(df)
         elif state.view_type == 'Map':
-            st.map(df)
+            if 'lat' in df.columns:
+                st.map(df)
+            else:
+                st.info('no lat/lon info in data frame.')
         elif state.view_type == 'Graph':
-            figure = go.Figure()
-            for col in df.columns:
-                if col not in ['local_time','gps_date_time']:
-                    figure.add_trace(go.Scatter(x=df.index, y=df[col], name=col))
+            figure = create_graph(df)
+            st.plotly_chart(figure)
+        elif state.view_type == 'Lat-Lon':
+            if 'lat' in df.columns:
+                figure = go.Figure()
+                y = df['lat']
+                x = df['lon']
+                text = []
+                for i in df.index:
+                    text.append(i.strftime('%Y/%m/%d %H:%M:%S'))
 
+                figure.add_trace(go.Scatter(
+                    x=x,
+                    y=y,
+                    mode='lines+markers+text',
+                    text=text,
+                    textposition='top center',
+                    name='lat/lon'))
                 figure.update_layout(
                     margin=dict(l=5, r=5, t=5, b=5),
                     font=dict(
                         size=10,
-                    ),
-                    legend={
-                        "orientation": "h",
-                        "yanchor": "top",
-                        "y": -0.5,
-                        "xanchor": "center",
-                        "x": 0.5,
-                    },
-                    xaxis=dict(
-                        rangeselector=dict(
-                            buttons=list([
-                                dict(count=1,
-                                     label="1m",
-                                     step="minute",
-                                     stepmode="backward"),
-                                dict(count=10,
-                                     label="10m",
-                                     step="minute",
-                                     stepmode="backward"),
-                                dict(count=1,
-                                     label="1h",
-                                     step="hour",
-                                     stepmode="backward"),
-                                dict(count=1,
-                                     label="1d",
-                                     step="day",
-                                     stepmode="backward"),
-                                ])
-                        ),
-                        rangeslider=dict(
-                            visible=True
-                        ),
-                        type="date"
                     )
                 )
-
-            st.plotly_chart(figure)
+                st.plotly_chart(figure)
+            else:
+                st.info('no lat/lon info in data frame.')
         # df = df.rename(columns={'lng': 'lon'})
         # st.map(df)
     # mqtt_client.loop_forever()
     state.sync()
     # mqtt_client.loop_forever()
+
+
+def create_graph(df):
+    figure = go.Figure()
+    for col in df.columns:
+        if col not in ['local_time', 'gps_date_time']:
+            figure.add_trace(go.Scatter(x=df.index, y=df[col], name=col))
+
+        figure.update_layout(
+            margin=dict(l=5, r=5, t=5, b=5),
+            font=dict(
+                size=10,
+            ),
+            legend={
+                "orientation": "h",
+                "yanchor": "top",
+                "y": -0.5,
+                "xanchor": "center",
+                "x": 0.5,
+            },
+            xaxis=dict(
+                rangeselector=dict(
+                    buttons=list([
+                        dict(count=1,
+                             label="1m",
+                             step="minute",
+                             stepmode="backward"),
+                        dict(count=10,
+                             label="10m",
+                             step="minute",
+                             stepmode="backward"),
+                        dict(count=1,
+                             label="1h",
+                             step="hour",
+                             stepmode="backward"),
+                        dict(count=1,
+                             label="1d",
+                             step="day",
+                             stepmode="backward"),
+                    ])
+                ),
+                rangeslider=dict(
+                    visible=True
+                ),
+                type="date"
+            )
+        )
+    return figure
 
 
 if __name__ == "__main__":
