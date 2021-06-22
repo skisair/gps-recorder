@@ -44,7 +44,7 @@ class CameraDevice:
         mqtt_port = int(os.environ.get('MQTT_PORT', default=1883))
         keep_alive = int(os.environ.get('MQTT_KEEP_ALIVE', default=60))
         subscribe_mqtt_topic = os.environ.get('MQTT_TOPIC', default='sensor/#')
-        subscribe_mqtt_topic = Template(subscribe_mqtt_topic).substitute(device_id=self.device_id, **os.environ)
+        subscribe_mqtt_topic = Template(subscribe_mqtt_topic).safe_substitute(device_id=self.device_id, **os.environ)
         client = mqtt.Client(protocol=mqtt.MQTTv311)
         client.topic = subscribe_mqtt_topic
 
