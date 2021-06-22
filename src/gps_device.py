@@ -1,8 +1,10 @@
 import os
 import platform
 import logging
+import time
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict
+import math
 
 import serial
 
@@ -14,6 +16,7 @@ from exporter import LocalExporter, MqttExporter
 GPS_PORT = os.environ.get('GPS_PORT', default='/dev/tty.usbmodem14101')
 DEVICE_ID = os.environ.get('DEVICE_ID', default=platform.uname()[1])
 LOG_LEVEL = os.environ.get('LOG_LEVEL', default=logging.INFO)
+DUMMY_SCRIPT = os.environ.get('DUMMY_SCRIPT', default='')
 
 JST = timezone(timedelta(hours=+9), 'JST')
 logger = logging.getLogger(__name__)
@@ -22,10 +25,100 @@ streamHandler = logging.StreamHandler()
 logger.addHandler(streamHandler)
 
 
-class GpsTracker:
+class SerialPort:
+    """
+    シリアル通信モジュール
+    （特にGPSというわけではない…）
+    """
+
+    def __init__(self, port: str, baudrate: int = 9600, parity: str = serial.PARITY_NONE, bytesize: int = serial.EIGHTBITS,stopbits: float = serial.STOPBITS_ONE, timeout = None, xonxoff: int = 0, rtscts: int = 0):
+        """
+        初期化
+        :param port:
+        :param baudrate:
+        :param parity:
+        :param bytesize:
+        :param stopbits:
+        :param xonxoff:
+        :param rtscts:
+        """
+        self.ser = serial.Serial(
+            port=port,
+            baudrate=baudrate,
+            parity=parity,
+            bytesize=bytesize,
+            stopbits=stopbits,
+            timeout=timeout,
+            xonxoff=xonxoff,
+            rtscts=rtscts,
+        )
+
+    def read(self) -> str:
+        """
+        情報読み込み
+        :return:
+        """
+        gps_raw_data = self.ser.readline().decode('utf-8')
+        #print(gps_raw_data)
+        return gps_raw_data
+
+
+class DummySerialPort:
+    """
+    ダミーシリアル通信
+    """
+    # ファイルから読み込み、一連の読み込み後、返却スリープあり、ファイルの終端まできたら繰り返し
+
+    def __init__(self, path:str):
+        with open(path, mode='r') as file:
+            self.lines = file.readlines()
+        self.line_index = 0
+
+    def _next(self):
+        """
+        ファイルの１行を返却する
+        :return:
+        """
+        if self.line_index >= len(self.lines):
+            self.line_index = 0
+        line = self.lines[self.line_index]
+        self.line_index = self.line_index + 1
+        return line
+
+    def read(self):
+        """
+        スクリプト解釈・応答返却
+        :return:
+        """
+        while True:
+            # 空白・改行は削除
+            next_line = self._next().strip()
+            if len(next_line) == 0:
+                # 空行はパス
+                pass
+            if next_line.startswith('#'):
+                # コメント行はパス
+                pass
+            elif next_line.startswith('sleep'):
+                # sleep XXXX はXXX秒スリープ
+                # sleep のみであれば１秒
+                # スリープ後は次の行を読み込み
+                values = next_line.split(' ')
+                if len(values) == 1:
+                    sleep_time = 1
+                else:
+                    sleep_time = int(values[1])
+                time.sleep(sleep_time)
+            else:
+                # その他は、シリアルの応答として返却
+                break
+        return next_line
+
+
+class GpsDevice:
     def __init__(self, device_id: str, port: str,
                  baudrate: int = 9600, parity: str = serial.PARITY_NONE, bytesize: int = serial.EIGHTBITS,
-                 stopbits: float = serial.STOPBITS_ONE, xonxoff: int = 0, rtscts: int = 0):
+                 stopbits: float = serial.STOPBITS_ONE, xonxoff: int = 0, rtscts: int = 0, dummy_script: str = ''):
         """
         GPSトラッカー
         :param device_id:
@@ -36,20 +129,25 @@ class GpsTracker:
         :param stopbits:
         :param xonxoff:
         :param rtscts:
+        :param dummy_script: ダミー処理用スクリプト
         """
         self.device_id = device_id
         self.port = port
         self.running = True
-        self.ser = serial.Serial(
-            port=port,
-            baudrate=baudrate,
-            parity=parity,
-            bytesize=bytesize,
-            stopbits=stopbits,
-            timeout=None,
-            xonxoff=xonxoff,
-            rtscts=rtscts,
-        )
+        if len(dummy_script) > 0:
+            self.sensor = DummySerialPort(dummy_script)
+        else:
+            self.sensor = SerialPort(
+                port=port,
+                baudrate=baudrate,
+                parity=parity,
+                bytesize=bytesize,
+                stopbits=stopbits,
+                timeout=None,
+                xonxoff=xonxoff,
+                rtscts=rtscts,
+            )
+
         self.exporters = []
 
     def add(self, exporter):
@@ -62,7 +160,7 @@ class GpsTracker:
 
     def run(self):
         while self.running:
-            gps_raw_data = self.ser.readline().decode('utf-8')
+            gps_raw_data = self.sensor.read()
             gps_data, check_sum = gps_raw_data.split('*')
             gps_data = gps_data.split(',')
             # logger.debug(gps_data)
@@ -73,6 +171,14 @@ class GpsTracker:
                 message['local_time'] = date_time
                 logger.debug(message)
                 self._output(message)
+
+    @staticmethod
+    def parse_matrix_value(input: str) -> float:
+        input = float(input)
+        top = math.floor(input/100)
+        bottom = (input - top*100) / 60.0
+        return top + bottom
+        # 3655.9461は、36°+55.9461′だから、36+(55.9461/60)=36.932435
 
     def _parse(self, values: List) -> List[Dict]:
         """
@@ -124,8 +230,8 @@ class GpsTracker:
         if warning == 'V':
             logger.warning(f'GPGGA staus is V.')
         else:
-            lat = float(values[1]) / 100.0
-            lon = float(values[3]) / 100.0
+            lat = self.parse_matrix_value(values[1])
+            lon = self.parse_matrix_value(values[3])
             lat_d = values[2]
             lon_d = values[4]
             if lat_d == 'S':
@@ -247,8 +353,8 @@ class GpsTracker:
         if lat == '':
             logger.warning(f'GPGGA is not valid.')
         else:
-            lat = float(values[2]) / 100.0
-            lon = float(values[4]) / 100.0
+            lat = self.parse_matrix_value(values[2])
+            lon = self.parse_matrix_value(values[4])
             lat_d = values[3]
             lon_d = values[5]
             if lat_d == 'S':
@@ -290,8 +396,8 @@ class GpsTracker:
             logger.warning(f'date format error in GPRMC {values}')
             gps_date_time = datetime.now().isoformat()
         if warning == 'A':
-            lat = float(values[3]) / 100.0
-            lon = float(values[5]) / 100.0
+            lat = self.parse_matrix_value(values[3])
+            lon = self.parse_matrix_value(values[5])
             lat_d = values[4]
             lon_d = values[6]
             if lat_d == 'S':
@@ -335,7 +441,7 @@ if __name__ == '__main__':
     device_id = DEVICE_ID
     local_exporter = LocalExporter(device_id)
     mqtt_exporter = MqttExporter(device_id)
-    gps = GpsTracker(device_id, GPS_PORT)
+    gps = GpsDevice(device_id, GPS_PORT, dummy_script=DUMMY_SCRIPT)
     gps.add(local_exporter)
     gps.add(mqtt_exporter)
     try:
