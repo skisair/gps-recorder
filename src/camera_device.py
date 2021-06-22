@@ -80,6 +80,8 @@ class CameraDevice:
 
     def run(self):
         last_send_time = 0
+        user_input = 'key:'
+        recording = True
         while self.running:
             date_time = datetime.now(JST).strftime('%Y%m%d%H%M%S%f')
             shoot_time = time.time()
@@ -91,10 +93,11 @@ class CameraDevice:
             message = {
                 'data_id': self.data_id, 'image': jpg_as_text, 'size': str(size), 'format': 'png', 'device_id': self.device_id,
                 'local_time': date_time}
-            logger.debug(message)
-            self._output(message)
+            # logger.debug(message)
+            if recording:
+                logger.debug(f'send message. device_id:{self.device_id} data_id:{self.data_id} size:{str(size)} len:{len(jpg_as_text)}')
+                self._output(message)
             sleep_seconds = (SEND_INTERVAL/1000.0 - (time.time() - shoot_time))
-            print(len(jpg_as_text),sleep_seconds)
 
             if self.headless:
                 time.sleep(sleep_seconds)
@@ -112,8 +115,30 @@ class CameraDevice:
                     message = 'lon: ' + str(self.latlon[1])
                     resized_image = cv2.putText(resized_image, message, position, font,
                                                 font_size, color_bgr, 2, cv2.LINE_AA)
+
+                    position = (75, 450)
+                    font_size = 1
+                    if recording:
+                        message = 'Press [S] to stop recording'
+                    else:
+                        message = 'Press [R] to record'
+
+                    resized_image = cv2.putText(resized_image, message, position, font,
+                                                font_size, color_bgr, 2, cv2.LINE_AA)
+
                     cv2.imshow('Image', resized_image)
-                    cv2.waitKey(1)
+                    key = cv2.waitKey(1)
+                    if key == -1:
+                        pass
+                    elif key == 0x72:
+                        logger.info('Start recording')
+                        recording = True
+                    elif key == 0x73:
+                        logger.info('Stop recording')
+                        recording = False
+                    else:
+                        pass
+
                     resized_image, size = self.get_image()
                     self.client.loop(0)
 
