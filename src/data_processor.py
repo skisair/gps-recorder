@@ -44,14 +44,17 @@ if __name__ == '__main__':
     mqtt_port = int(os.environ.get('MQTT_PORT', default=1883))
     keep_alive = int(os.environ.get('MQTT_KEEP_ALIVE', default=60))
     subscribe_mqtt_topic = os.environ.get('MQTT_TOPIC', default='sensor/#')
+    exporters = os.environ.get('DEVICE_EXPORTER', default='LOCAL,AZURE').split(',')
 
     event_handler = GpsEventHandler()
 
-    local_exporter = LocalExporter(device_id)
-    event_handler.add(local_exporter)
+    if 'LOCAL' in exporters:
+        local_exporter = LocalExporter(device_id)
+        event_handler.add(local_exporter)
 
-    azure_exporter = AzureExporter()
-    event_handler.add(azure_exporter)
+    if 'AZURE' in exporters:
+        azure_exporter = AzureExporter()
+        event_handler.add(azure_exporter)
 
     client = mqtt.Client(protocol=mqtt.MQTTv311)
     client.topic = subscribe_mqtt_topic

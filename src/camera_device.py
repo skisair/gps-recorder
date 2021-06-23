@@ -20,6 +20,7 @@ CAMERA_ID = int(os.environ.get('CAMERA_ID', default=0))
 TARGET_WIDTH = int(os.environ.get('TARGET_WIDTH', default=640))
 DATA_ID = os.environ.get('DATA_ID', default='CAM01')
 SEND_INTERVAL = int(os.environ.get('SEND_INTERVAL', default=1000))
+DEVICE_EXPORTER = os.environ.get('DEVICE_EXPORTER', default='LOCAL,MQTT')
 
 JST = timezone(timedelta(hours=+9), 'JST')
 logger = logging.getLogger(__name__)
@@ -160,6 +161,7 @@ class CameraDevice:
                 logger.error(f'output fail {exporter}/{message} : {e}')
 
     def stop(self):
+        self.capture.release()
         self.running = False
 
 
@@ -171,13 +173,20 @@ if __name__ == '__main__':
 
     device_id = DEVICE_ID
     data_id = DATA_ID
-    local_exporter = LocalExporter(device_id)
-    mqtt_exporter = MqttExporter(device_id)
+    device_exporter = DEVICE_EXPORTER.split(',')
 
-    camera = CameraDevice(device_id, data_id)
-    camera.add(local_exporter)
-    camera.add(mqtt_exporter)
-    if args.viewer:
-        camera.run_mqtt()
+    device = CameraDevice(device_id, data_id)
 
-    camera.run()
+    if 'LOCAL' in device_exporter:
+        local_exporter = LocalExporter(device_id)
+        device.add(local_exporter)
+    if 'MQTT' in device_exporter:
+        mqtt_exporter = MqttExporter(device_id)
+        device.add(mqtt_exporter)
+        if args.viewer:
+            device.run_mqtt()
+
+    try:
+        device.run()
+    except KeyboardInterrupt:
+        device.stop()
