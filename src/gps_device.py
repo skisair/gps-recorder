@@ -18,6 +18,12 @@ DEVICE_ID = os.environ.get('DEVICE_ID', default=platform.uname()[1])
 LOG_LEVEL = os.environ.get('LOG_LEVEL', default=logging.INFO)
 DUMMY_SCRIPT = os.environ.get('DUMMY_SCRIPT', default='')
 DEVICE_EXPORTER = os.environ.get('DEVICE_EXPORTER', default='LOCAL,MQTT')
+TARGET_DATA_ID = os.environ.get('TARGET_DATA_ID', default='GPRMC,GPGGA,GPVTG,GPGSA,GPGSV,GPGLL,GPTXT')
+EXCLUDE_DATA_ID = os.environ.get('EXCLUDE_DATA_ID', default='')
+
+'''
+GPRMC,GPGGA,GPVTG,GPGSA,GPGSV,GPGLL,GPTXT
+'''
 
 JST = timezone(timedelta(hours=+9), 'JST')
 logger = logging.getLogger(__name__)
@@ -150,6 +156,18 @@ class GpsDevice:
             )
 
         self.exporters = []
+        self.check_target_data_id = False
+        self.target_data_ids = []
+        self.check_exclude_data_id = False
+        self.exclude_data_ids = []
+
+    def set_target_data_ids(self, target_data_ids):
+        self.check_target_data_id = True
+        self.target_data_ids = target_data_ids
+
+    def set_exclude_data_ids(self, exclude_data_ids):
+        self.check_exclude_data_id = True
+        self.exclude_data_ids = exclude_data_ids
 
     def add(self, exporter):
         """
@@ -189,6 +207,13 @@ class GpsDevice:
         """
         result = []
         data_id = values[0][1:]
+        if self.check_target_data_id and (data_id not in self.target_data_ids) :
+            logger.debug(f'{data_id}: not in target_data_ids:{self.target_data_ids}')
+            return result
+        elif self.check_exclude_data_id and (data_id in self.exclude_data_ids):
+            logger.debug(f'{data_id}: in exclude_data_ids:{self.exclude_data_ids}')
+            return result
+
         try:
             if data_id == 'GPRMC':
                 self._parse_GPRMC(data_id, values, result)
@@ -441,7 +466,14 @@ class GpsDevice:
 if __name__ == '__main__':
     device_id = DEVICE_ID
     device_exporter = DEVICE_EXPORTER.split(',')
+    target_data_ids = TARGET_DATA_ID.split(',')
+    exclude_data_ids = EXCLUDE_DATA_ID.split(',')
+
     device = GpsDevice(device_id, GPS_PORT, dummy_script=DUMMY_SCRIPT)
+    if len(target_data_ids) > 0:
+        device.set_target_data_ids(target_data_ids)
+    elif len(exclude_data_ids) > 0:
+        device.set_exclude_data_ids(exclude_data_ids)
 
     if 'LOCAL' in device_exporter:
         local_exporter = LocalExporter(device_id)
