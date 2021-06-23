@@ -2,6 +2,7 @@ import os
 import logging
 import json
 from datetime import datetime, timezone, timedelta
+import glob
 
 import paho.mqtt.client as mqtt
 
@@ -33,16 +34,19 @@ class GpsEventHandler:
         data = message.payload.decode()
         logger.debug(f'{message.topic} {data}')
         org_message = json.loads(data)
-        for exporter in self.exporters:
-            exporter.export(org_message)
+        self.export(org_message)
 
+    def export(self, message:dict ):
+        for exporter in self.exporters:
+            exporter.export(message)
 
 if __name__ == '__main__':
-
     device_id = os.environ.get('DATA_PROCESSOR_ID', default='data_processor')
     mqtt_host = os.environ.get('MQTT_HOST', default='localhost')
     mqtt_port = int(os.environ.get('MQTT_PORT', default=1883))
     keep_alive = int(os.environ.get('MQTT_KEEP_ALIVE', default=60))
+
+    batch_input = os.environ.get('BATCH_INPUT_FOLDER', default='')
     subscribe_mqtt_topic = os.environ.get('MQTT_TOPIC', default='sensor/#')
     exporters = os.environ.get('DEVICE_EXPORTER', default='LOCAL,AZURE').split(',')
 
@@ -56,13 +60,20 @@ if __name__ == '__main__':
         azure_exporter = AzureExporter()
         event_handler.add(azure_exporter)
 
-    client = mqtt.Client(protocol=mqtt.MQTTv311)
-    client.topic = subscribe_mqtt_topic
+    if len(batch_input) > 0:
+        files = glob.glob( os.path.join(batch_input,'/**/*.json'), recursive=True)
+        for file in files:
+            with open(file, mode='r') as f:
+                message = json.load(f)
+                event_handler.export(message)
+    else:
+        client = mqtt.Client(protocol=mqtt.MQTTv311)
+        client.topic = subscribe_mqtt_topic
 
-    client.on_connect = event_handler.on_connect
-    client.on_message = event_handler.on_message
+        client.on_connect = event_handler.on_connect
+        client.on_message = event_handler.on_message
 
-    client.connect(mqtt_host, port=mqtt_port, keepalive=keep_alive)
+        client.connect(mqtt_host, port=mqtt_port, keepalive=keep_alive)
 
-    # ループ
-    client.loop_forever()
+        # ループ
+        client.loop_forever()
