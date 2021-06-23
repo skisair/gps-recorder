@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import paho.mqtt.client as mqtt
 from azure.cosmosdb.table.tableservice import TableService
+from geopy.distance import geodesic
 
 from session import _get_state
 
@@ -247,27 +248,10 @@ def main():
             st.plotly_chart(figure)
         elif state.view_type == 'Lat-Lon':
             if 'lat' in df.columns:
-                figure = go.Figure()
-                y = df['lat']
-                x = df['lon']
-                text = []
-                for i in df.index:
-                    text.append(i.strftime('%Y/%m/%d %H:%M:%S'))
-
-                figure.add_trace(go.Scatter(
-                    x=x,
-                    y=y,
-                    mode='lines+markers+text',
-                    text=text,
-                    textposition='top center',
-                    name='lat/lon'))
-                figure.update_layout(
-                    margin=dict(l=5, r=5, t=5, b=5),
-                    font=dict(
-                        size=10,
-                    )
-                )
+                figure = get_lat_lon_figure(df)
                 st.plotly_chart(figure)
+                figure2 = get_lat_lon_figure_org(df)
+                st.plotly_chart(figure2)
             else:
                 st.info('no lat/lon info in data frame.')
         # df = df.rename(columns={'lng': 'lon'})
@@ -276,6 +260,85 @@ def main():
     state.sync()
     # mqtt_client.loop_forever()
 
+
+def get_lat_lon_figure(df):
+    figure = go.Figure()
+    '''
+    X Lon
+    Y Lat
+    '''
+    lons = df['lon'].values
+    lats = df['lat'].values
+
+    lon_center = np.average(lons)
+    lat_center = np.average(lats)
+    center = (lat_center, lon_center)
+
+    x = []
+    y = []
+    for lon, lat in zip(lons, lats):
+        x_distance = (lat_center, lon)
+        y_distance = (lat, lon_center)
+        x_dis = geodesic(center, x_distance).meters
+        if lon < lon_center:
+            x_dis = -x_dis
+        y_dis = geodesic(center, y_distance).meters
+        if lat < lat_center:
+            y_dis = -y_dis
+        x.append(x_dis)
+        y.append(y_dis)
+
+    range_max = np.ceil(np.max([np.max(np.abs(x)),np.max(np.abs(y))]))
+
+    text = []
+
+    for i in df.index:
+        text.append(i.strftime('%Y/%m/%d %H:%M:%S'))
+
+    figure.add_trace(go.Scatter(
+        x=x,
+        y=y,
+        mode='lines+markers',
+        text=text,
+        textposition='top center',
+        name='lat/lon'))
+
+    figure.update_layout(
+        xaxis=dict(range=[-range_max , range_max]),
+        yaxis=dict(range=[-range_max, range_max]),
+        margin=dict(l=5, r=5, t=5, b=5),
+        font=dict(
+            size=10,
+        )
+    )
+    return figure
+
+
+def get_lat_lon_figure_org(df):
+    figure = go.Figure()
+    '''
+    X Lon
+    Y Lat
+    '''
+    x = df['lon'].values
+    y = df['lat'].values
+    text = []
+    for i in df.index:
+        text.append(i.strftime('%Y/%m/%d %H:%M:%S'))
+    figure.add_trace(go.Scatter(
+        x=x,
+        y=y,
+        mode='lines+markers',
+        text=text,
+        textposition='top center',
+        name='lat/lon'))
+    figure.update_layout(
+        margin=dict(l=5, r=5, t=5, b=5),
+        font=dict(
+            size=10,
+        )
+    )
+    return figure
 
 def create_graph(df):
     figure = go.Figure()
