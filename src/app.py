@@ -210,24 +210,23 @@ def main():
         mqtt_client.loop(timeout=1)
         timeout -= 1
 
-    print(topic)
+    left_column, right_column = st.beta_columns(2)
 
     state.selected_datas = dataset.select(state.device_id, state.data_id, state)
-    left_column, right_column = st.beta_columns(2)
-    pict_index = state.pict_index if state.pict_index else 0
-    pict_time = datetime.strptime(state.selected_datas['picts'][pict_index], '%Y%m%d%H%M%S%f').replace(tzinfo=JST)
-    image = open_image(state.device_id, state.selected_datas['picts'][pict_index])
-    left_column.image(image)
+    if len(state.selected_datas['picts']) > 0:
+        pict_index = state.pict_index if state.pict_index else 0
+        pict_time = datetime.strptime(state.selected_datas['picts'][pict_index], '%Y%m%d%H%M%S%f').replace(tzinfo=JST)
+        image = open_image(state.device_id, state.selected_datas['picts'][pict_index])
+        left_column.image(image)
 
-    from_time = datetime.strptime(state.selected_datas['picts'][0], '%Y%m%d%H%M%S%f').replace(tzinfo=JST)
-    to_time = datetime.strptime(state.selected_datas['picts'][-1], '%Y%m%d%H%M%S%f').replace(tzinfo=JST)
-    step = timedelta(seconds=1)
+        from_time = datetime.strptime(state.selected_datas['picts'][0], '%Y%m%d%H%M%S%f').replace(tzinfo=JST)
+        to_time = datetime.strptime(state.selected_datas['picts'][-1], '%Y%m%d%H%M%S%f').replace(tzinfo=JST)
+        step = timedelta(seconds=1)
 
-    print(f"key:{state.selected_datas['picts'][0],} from_time:{from_time}")
+        state.pict_time = left_column.slider('camera time', min_value=from_time, max_value=to_time, value=pict_time, step=step, format='YYYY/MM/DD HH:mm:ss')
+        state.pict_index = get_pict_index(state.selected_datas['picts'], state.pict_time)
+        # st.info(f'{state.from_key}-{state.to_key}')
 
-    state.pict_time = left_column.slider('camera time', min_value=from_time, max_value=to_time, value=pict_time, step=step, format='YYYY/MM/DD HH:mm:ss')
-    state.pict_index = get_pict_index(state.selected_datas['picts'], state.pict_time)
-    # st.info(f'{state.from_key}-{state.to_key}')
     df = state.selected_datas['datas']
     if len(df.index) > 0:
         if 'lat' in df.columns:
