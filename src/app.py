@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 import pandas as pd
 import paho.mqtt.client as mqtt
 from azure.cosmosdb.table.tableservice import TableService
+from azure.cosmosdb.table.models import EntityProperty
 from geopy.distance import geodesic
 
 from session import _get_state
@@ -56,6 +57,7 @@ class DeviceDataset:
         tasks = state.table_service.query_entities(self.tdata_table_name, filter=filter_query)
         result = []
         for task in tasks:
+            record = {}
             task['local_time'] = datetime.strptime(task['local_time'], '%Y%m%d%H%M%S%f')
             del task['PartitionKey']
             del task['RowKey']
@@ -65,7 +67,12 @@ class DeviceDataset:
             del task['data_id']
             if 'gps_date_time' in task:
                 del task['gps_date_time']
-            result.append(task)
+            for key in task:
+                value = task[key]
+                if type(value) == EntityProperty:
+                    value = task[key].value
+                record[key] = value
+            result.append(record)
         print(f'query:{filter_query} len:{len(result)}')
 
         partition_key = device_id + '_' + 'CAM01'
