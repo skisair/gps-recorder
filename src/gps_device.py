@@ -17,6 +17,7 @@ GPS_PORT = os.environ.get('GPS_PORT', default='/dev/tty.usbmodem14101')
 DEVICE_ID = os.environ.get('DEVICE_ID', default=platform.uname()[1])
 LOG_LEVEL = os.environ.get('LOG_LEVEL', default=logging.INFO)
 DUMMY_SCRIPT = os.environ.get('DUMMY_SCRIPT', default='')
+DEVICE_EXPORTER = os.environ.get('DEVICE_EXPORTER', default='LOCAL,MQTT')
 
 JST = timezone(timedelta(hours=+9), 'JST')
 logger = logging.getLogger(__name__)
@@ -439,12 +440,17 @@ class GpsDevice:
 
 if __name__ == '__main__':
     device_id = DEVICE_ID
-    local_exporter = LocalExporter(device_id)
-    mqtt_exporter = MqttExporter(device_id)
-    gps = GpsDevice(device_id, GPS_PORT, dummy_script=DUMMY_SCRIPT)
-    gps.add(local_exporter)
-    gps.add(mqtt_exporter)
+    device_exporter = DEVICE_EXPORTER.split(',')
+    device = GpsDevice(device_id, GPS_PORT, dummy_script=DUMMY_SCRIPT)
+
+    if 'LOCAL' in device_exporter:
+        local_exporter = LocalExporter(device_id)
+        device.add(local_exporter)
+    if 'MQTT' in device_exporter:
+        mqtt_exporter = MqttExporter(device_id)
+        device.add(mqtt_exporter)
+
     try:
-        gps.run()
+        device.run()
     except KeyboardInterrupt:
-        gps.stop()
+        device.stop()
