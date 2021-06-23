@@ -166,7 +166,7 @@ class CameraDevice:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser = argparse.ArgumentParser()
     parser.add_argument('--viewer', help='viewer', action='store_true')
     args = parser.parse_args()
     print(args.viewer)
