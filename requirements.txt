@@ -7,5 +7,6 @@ pandas==1.2.4
 plotly==4.14.3
 opencv-python==4.5.2.54
 numpy==1.20.3
+geopy==2.1.0
 
 
