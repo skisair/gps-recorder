@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import List, Dict
 import math
+import traceback
 
 import serial
 
@@ -16,7 +17,7 @@ from util.exporter import LocalExporter, MqttExporter
 GPS_PORT = os.environ.get('GPS_PORT', default='/dev/tty.usbmodem14101')
 DEVICE_ID = os.environ.get('DEVICE_ID', default=platform.uname()[1])
 LOG_LEVEL = os.environ.get('LOG_LEVEL', default=logging.INFO)
-DUMMY_SCRIPT = os.environ.get('DUMMY_SCRIPT', default='')
+DUMMY_SCRIPT = os.environ.get('DUMMY_SCRIPT', default='')  # dummy/gps/gps-sample001.txt
 DEVICE_EXPORTER = os.environ.get('DEVICE_EXPORTER', default='LOCAL,MQTT')
 TARGET_DATA_ID = os.environ.get('TARGET_DATA_ID', default='GPRMC,GPGGA,GPVTG,GPGSA,GPGSV,GPGLL,GPTXT')
 EXCLUDE_DATA_ID = os.environ.get('EXCLUDE_DATA_ID', default='')
@@ -66,7 +67,6 @@ class SerialPort:
         :return:
         """
         gps_raw_data = self.ser.readline().decode('utf-8')
-        #print(gps_raw_data)
         return gps_raw_data
 
 
@@ -102,10 +102,10 @@ class DummySerialPort:
             next_line = self._next().strip()
             if len(next_line) == 0:
                 # 空行はパス
-                pass
+                continue
             if next_line.startswith('#'):
                 # コメント行はパス
-                pass
+                continue
             elif next_line.startswith('sleep'):
                 # sleep XXXX はXXX秒スリープ
                 # sleep のみであれば１秒
@@ -119,6 +119,8 @@ class DummySerialPort:
             else:
                 # その他は、シリアルの応答として返却
                 break
+
+        next_line = datetime.utcnow().strftime(next_line)
         return next_line
 
 
@@ -490,6 +492,7 @@ if __name__ == '__main__':
                 device.stop()
                 break
         except Exception as e:
+            logger.error(traceback.format_exc())
             if device is not None:
                 device.stop()
             logger.error(f'LOOP : {e}')

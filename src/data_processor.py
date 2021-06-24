@@ -43,7 +43,7 @@ class GpsEventHandler:
         # 特定トピックの場合に、後続処理追加
         for sub_topic in self.parsers:
             if mqtt.topic_matches_sub(sub_topic, topic):
-                outputs = self.parsers[sub_topic].process(message)
+                outputs = self.parsers[sub_topic].process(json_message)
                 for output in outputs:
                     self.export(output)
 
@@ -87,7 +87,7 @@ class BatchProcessor:
                 event_handler.export(message)
 
 
-class GPRMCProcessor:
+class GPRMCParser:
     def __init__(self):
         pass
 
@@ -97,8 +97,8 @@ class GPRMCProcessor:
             'device_id': message['device_id'],
             'local_time': message['local_time'],
             'data_id': 'location',
-            'latitude': message['lat'],
-            'longitude': message['lon'],
+            'lat': message['lat'],
+            'lon': message['lon'],
         }
         outputs.append(output)
         return outputs
@@ -120,8 +120,8 @@ if __name__ == '__main__':
     # メッセージパーサーの追加
     # TODO 外部設定化
     event_handler = GpsEventHandler()
-    message_processor = GPRMCProcessor()
-    event_handler.add_logic('sensor/+/GPRMC', message_processor)
+    message_parser = GPRMCParser()
+    event_handler.add_logic('sensor/+/GPRMC', message_parser)
 
     if 'LOCAL' in exporters:
         local_exporter = LocalExporter(device_id)
