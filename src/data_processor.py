@@ -108,6 +108,7 @@ if __name__ == '__main__':
     device_id = os.environ.get('DATA_PROCESSOR_ID', default='data_processor')
 
     exporters = os.environ.get('DEVICE_EXPORTER', default='LOCAL,AZURE').split(',')
+    topic_parsers = os.environ.get('TOPIC_PARSERS', default='sensor/+/GPRMC:GPRMCParser').split(',')
 
     mqtt_host = os.environ.get('MQTT_HOST', default='localhost')
     mqtt_port = int(os.environ.get('MQTT_PORT', default=1883))
@@ -118,10 +119,20 @@ if __name__ == '__main__':
     batch_input = os.environ.get('BATCH_INPUT_FOLDER', default='')
 
     # メッセージパーサーの追加
-    # TODO 外部設定化
     event_handler = GpsEventHandler()
-    message_parser = GPRMCParser()
-    event_handler.add_logic('sensor/+/GPRMC', message_parser)
+    for topic_parser in topic_parsers:
+        topic, class_name = topic_parser.split(':')
+        class_name = class_name.split('.')
+        package_name = '.'.join(class_name[1:])
+        class_name = class_name[-1]
+        if len(package_name) == 0:
+            mod = __import__(__name__)
+        else:
+            mod = __import__(package_name, fromlist=[class_name])
+
+        klass = getattr(mod, class_name)
+        message_parser = klass()
+        event_handler.add_logic(topic, message_parser)
 
     if 'LOCAL' in exporters:
         local_exporter = LocalExporter(device_id)
