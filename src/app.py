@@ -14,6 +14,7 @@ import paho.mqtt.client as mqtt
 from azure.cosmosdb.table.tableservice import TableService
 from azure.cosmosdb.table.models import EntityProperty
 from geopy.distance import geodesic
+import pydeck as pdk
 
 from session import _get_state
 
@@ -246,7 +247,70 @@ def main():
             st.dataframe(df)
         elif state.view_type == 'Map':
             if 'lat' in df.columns:
-                st.map(df)
+                # st.map(df)
+
+                lons = df['lon'].values
+                lats = df['lat'].values
+
+                lon_center = np.average(lons)
+                lat_center = np.average(lats)
+                df_map = df[['lon', 'lat']]
+
+                st.pydeck_chart(pdk.Deck(
+                    map_style='mapbox://styles/mapbox/streets-v11',
+                    initial_view_state=pdk.ViewState(
+                        latitude=lat_center,
+                        longitude=lon_center,
+                        zoom=18,
+                        pitch=0,
+                    ),
+                    layers=[
+                        pdk.Layer(
+                            'ScatterplotLayer',
+                            df_map,
+                            get_position='[lon, lat]',
+                            get_radius=1,
+                            get_fill_color=[255, 140, 0],
+                            get_line_color=[0, 0, 0],
+                        ),
+                    ],
+                ))
+
+                path = []
+                for index, row in df_map.iterrows():
+                    path.append([row['lon'], row['lat']])
+
+                data = [
+                    {
+                        'name' : 'GPS Track',
+                        'color': [255, 140, 0],
+                        'path': path,
+                    }
+                ]
+
+                st.pydeck_chart(pdk.Deck(
+                    map_style='mapbox://styles/mapbox/streets-v11',
+                    initial_view_state=pdk.ViewState(
+                        latitude=lat_center,
+                        longitude=lon_center,
+                        zoom=18,
+                        pitch=0,
+                    ),
+                    layers=[
+                        pdk.Layer(
+                            type='PathLayer',
+                            data=data,
+                            width_scale=1,
+                            get_color='color',
+                            pickable=True,
+                            get_path='path',
+                            get_width=1,
+                        ),
+                    ],
+                ))
+
+
+
             else:
                 st.info('no lat/lon info in data frame.')
         elif state.view_type == 'Graph':
@@ -345,6 +409,7 @@ def get_lat_lon_figure_org(df):
         )
     )
     return figure
+
 
 def create_graph(df):
     figure = go.Figure()
