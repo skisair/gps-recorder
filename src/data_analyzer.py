@@ -16,7 +16,7 @@ from azure.cosmosdb.table.models import EntityProperty
 from geopy.distance import geodesic
 import pydeck as pdk
 
-from session import _get_state
+from util.session import _get_state
 
 JST = timezone(timedelta(hours=+9), 'JST')
 
