@@ -8,7 +8,6 @@ import paho.mqtt.client as mqtt
 
 from util.exporter import LocalExporter, AzureExporter
 
-
 LOG_LEVEL = os.environ.get('LOG_LEVEL', default=logging.INFO)
 
 JST = timezone(timedelta(hours=+9), 'JST')
@@ -31,24 +30,49 @@ class GpsEventHandler:
         client.subscribe(client.topic)
 
     def on_message(self, client, userdata, message):
+        topic = message.topic
         data = message.payload.decode()
-        logger.debug(f'{message.topic} {data}')
-        org_message = json.loads(data)
-        self.export(org_message)
+        logger.debug(f'{topic} : {data}')
+        json_message = json.loads(data)
+        self.export(json_message)
 
     def export(self, message:dict ):
         for exporter in self.exporters:
             exporter.export(message)
 
+
+class DataProcessor:
+    def __init__(self, mqtt_host, mqtt_port, topic, event_handler):
+        self.running = True
+        self.event_handler = event_handler
+        self.mqtt_host = mqtt_host
+        self.mqtt_port = mqtt_port
+        self.mqtt_client = mqtt.Client(protocol=mqtt.MQTTv311)
+        self.mqtt_client.topic = topic
+        self.mqtt_client.on_connect = self.event_handler.on_connect
+        self.mqtt_client.on_message = self.event_handler.on_message
+
+    def run(self):
+        self.mqtt_client.connect(mqtt_host, port=mqtt_port, keepalive=keep_alive)
+        self.mqtt_client.loop_forever()
+
+    def stop(self):
+        self.running = False
+        self.mqtt_client.disconnect()
+
+
 if __name__ == '__main__':
     device_id = os.environ.get('DATA_PROCESSOR_ID', default='data_processor')
+
+    exporters = os.environ.get('DEVICE_EXPORTER', default='LOCAL,AZURE').split(',')
+
     mqtt_host = os.environ.get('MQTT_HOST', default='localhost')
     mqtt_port = int(os.environ.get('MQTT_PORT', default=1883))
     keep_alive = int(os.environ.get('MQTT_KEEP_ALIVE', default=60))
+    # センサーから上がってくる情報は全部。
+    subscribe_mqtt_topic = os.environ.get('MQTT_TOPIC', default='sensor/#')
 
     batch_input = os.environ.get('BATCH_INPUT_FOLDER', default='')
-    subscribe_mqtt_topic = os.environ.get('MQTT_TOPIC', default='sensor/#')
-    exporters = os.environ.get('DEVICE_EXPORTER', default='LOCAL,AZURE').split(',')
 
     event_handler = GpsEventHandler()
 
@@ -67,13 +91,9 @@ if __name__ == '__main__':
                 message = json.load(f)
                 event_handler.export(message)
     else:
-        client = mqtt.Client(protocol=mqtt.MQTTv311)
-        client.topic = subscribe_mqtt_topic
 
-        client.on_connect = event_handler.on_connect
-        client.on_message = event_handler.on_message
-
-        client.connect(mqtt_host, port=mqtt_port, keepalive=keep_alive)
-
-        # ループ
-        client.loop_forever()
+        data_processor = DataProcessor(mqtt_host=mqtt_host,
+                                       mqtt_port=mqtt_port,
+                                       topic=subscribe_mqtt_topic,
+                                       event_handler=event_handler)
+        data_processor.run()
