@@ -2,3 +2,6 @@ venv
 data
 notebooks
 *.log
+
+# ディレクトリを指定する場合
+node_modules/
