@@ -468,21 +468,29 @@ if __name__ == '__main__':
     device_exporter = DEVICE_EXPORTER.split(',')
     target_data_ids = TARGET_DATA_ID.split(',')
     exclude_data_ids = EXCLUDE_DATA_ID.split(',')
+    device = None
+    while True:
+        try:
+            device = GpsDevice(device_id, GPS_PORT, dummy_script=DUMMY_SCRIPT)
+            if len(target_data_ids) > 0:
+                device.set_target_data_ids(target_data_ids)
+            elif len(exclude_data_ids) > 0:
+                device.set_exclude_data_ids(exclude_data_ids)
 
-    device = GpsDevice(device_id, GPS_PORT, dummy_script=DUMMY_SCRIPT)
-    if len(target_data_ids) > 0:
-        device.set_target_data_ids(target_data_ids)
-    elif len(exclude_data_ids) > 0:
-        device.set_exclude_data_ids(exclude_data_ids)
+            if 'LOCAL' in device_exporter:
+                local_exporter = LocalExporter(device_id)
+                device.add(local_exporter)
+            if 'MQTT' in device_exporter:
+                mqtt_exporter = MqttExporter(device_id)
+                device.add(mqtt_exporter)
 
-    if 'LOCAL' in device_exporter:
-        local_exporter = LocalExporter(device_id)
-        device.add(local_exporter)
-    if 'MQTT' in device_exporter:
-        mqtt_exporter = MqttExporter(device_id)
-        device.add(mqtt_exporter)
-
-    try:
-        device.run()
-    except KeyboardInterrupt:
-        device.stop()
+            try:
+                device.run()
+            except KeyboardInterrupt:
+                device.stop()
+                break
+        except Exception as e:
+            if device is not None:
+                device.stop()
+            logger.error(f'LOOP : {e}')
+            time.sleep(1)
