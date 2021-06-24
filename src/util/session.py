@@ -2,6 +2,7 @@ from streamlit.hashing import _CodeHasher
 from streamlit.report_thread import get_report_ctx
 from streamlit.server.server import Server
 
+
 class _SessionState:
     def __init__(self, session, hash_funcs):
         """Initialize SessionState instance."""

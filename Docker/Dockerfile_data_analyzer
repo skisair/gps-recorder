@@ -10,4 +10,4 @@ WORKDIR /opt/data_analyzer
 COPY src/ /opt/data_analyzer
 
 ENV PYTHONPATH=${PYTHONPATH}:.
-CMD ["streamlit", "run", "app.py"]
+CMD ["streamlit", "run", "data_analyzer.py"]

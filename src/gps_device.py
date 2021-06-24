@@ -8,7 +8,7 @@ import math
 
 import serial
 
-from exporter import LocalExporter, MqttExporter
+from util.exporter import LocalExporter, MqttExporter
 
 # Macの場合、 /dev/tty.usbserial-* の形で認識される。WindowsならCOM3とかCOM4とかになるはず
 # ls /dev/tty.usbserial* で出てきたポート名を入れること
@@ -450,7 +450,7 @@ class GpsDevice:
 
             result.append(message)
         else:
-            logger.warning(f'GPRMC status is in V.')
+            logger.warning(f'GPRMC status is in V. values:{values}')
 
     def _output(self, message):
         for exporter in self.exporters:
