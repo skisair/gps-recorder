@@ -79,7 +79,6 @@ class AzureExporter:
 
             self.mdevice_table.append((device_id + '_' + data_id))
 
-
         for item_id in message:
             if (data_id + '_' + item_id) not in self.mdata_table:
                 mdata = {

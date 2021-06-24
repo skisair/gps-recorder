@@ -39,8 +39,16 @@ class DeviceDataset:
         return list(device_list.keys())
 
     def get_dataset_list(self, device_id):
-        # TODO データリストのAzuriteからの取得
-        return ['GPRMC', 'GPVTG', 'GPGGA', 'GPGSA', 'GPGSV', 'GPGLL']
+        data_id_list = []
+        filter_query = f"PartitionKey eq '{device_id}'"
+        tasks = state.table_service.query_entities(self.mdevice_table_name, filter=filter_query)
+        for task in tasks:
+            data_id = task['data_id']
+            if data_id == 'CAM01':
+                continue
+            data_id_list.append(data_id)
+
+        return data_id_list
 
     def select(self, device_id: str, data_id: str, state):
         if state.realtime:
