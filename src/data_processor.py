@@ -21,9 +21,13 @@ class GpsEventHandler:
 
     def __init__(self):
         self.exporters = []
+        self.parsers = {}
 
     def add(self, exporter):
         self.exporters.append(exporter)
+
+    def add_logic(self, topic:str, method):
+        self.parsers[topic] = method
 
     def on_connect(self, client, userdata, flags, respons_code):
         logger.info(f'connected to mqtt server:{respons_code}')
@@ -35,6 +39,12 @@ class GpsEventHandler:
         logger.debug(f'{topic} : {data}')
         json_message = json.loads(data)
         self.export(json_message)
+
+        # 特定トピックの場合に、後続処理追加
+        for sub_topic in self.parsers:
+            if mqtt.topic_matches_sub(sub_topic, topic):
+                output = self.parsers[sub_topic].process(message)
+                self.export(output)
 
     def export(self, message:dict ):
         for exporter in self.exporters:
@@ -54,11 +64,26 @@ class DataProcessor:
 
     def run(self):
         self.mqtt_client.connect(mqtt_host, port=mqtt_port, keepalive=keep_alive)
-        self.mqtt_client.loop_forever()
+        while self.running:
+            self.mqtt_client.loop()
 
     def stop(self):
         self.running = False
         self.mqtt_client.disconnect()
+
+
+class BatchProcessor:
+    def __init__(self, path, event_handler, pattern:str='/**/*.json'):
+        self.event_handler = event_handler
+        self.path = batch_input
+        self.pattern = pattern
+
+    def run(self):
+        files = glob.glob( os.path.join(self.path, self.pattern), recursive=True)
+        for file in files:
+            with open(file, mode='r') as f:
+                message = json.load(f)
+                event_handler.export(message)
 
 
 if __name__ == '__main__':
@@ -85,15 +110,15 @@ if __name__ == '__main__':
         event_handler.add(azure_exporter)
 
     if len(batch_input) > 0:
-        files = glob.glob( os.path.join(batch_input,'/**/*.json'), recursive=True)
-        for file in files:
-            with open(file, mode='r') as f:
-                message = json.load(f)
-                event_handler.export(message)
+        data_processor = BatchProcessor(
+            path=batch_input,
+            event_handler=event_handler,
+            pattern='/**/*.json')
+        data_processor.run()
     else:
-
-        data_processor = DataProcessor(mqtt_host=mqtt_host,
-                                       mqtt_port=mqtt_port,
-                                       topic=subscribe_mqtt_topic,
-                                       event_handler=event_handler)
+        data_processor = DataProcessor(
+            mqtt_host=mqtt_host,
+            mqtt_port=mqtt_port,
+            topic=subscribe_mqtt_topic,
+            event_handler=event_handler)
         data_processor.run()
