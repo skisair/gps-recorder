@@ -15,6 +15,7 @@ const schedulerData = [
   { startDate: '2018-11-01T12:00', endDate: '2018-11-01T13:30', title: 'Go to a gym' },
 ];
 
+/*
 export default () => (
     <Paper>
       <Scheduler
@@ -31,14 +32,13 @@ export default () => (
       </Scheduler>
     </Paper>
 );
+*/
 
-/*
-//function App() {
 export class App extends React.Component {
-  constructor(props) {
+
+    constructor(props) {
     super(props);
     this.state = {value: ''};
-
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
   }
@@ -60,18 +60,17 @@ export class App extends React.Component {
     );
   }
 
-
-  wakati = text => {
-    //console.log("input text >>"+text)
+  wakati = (text, app) => {
     Axios.post('http://127.0.0.1:5000/list_device', {
       post_text: text
     }).then(function(res) {
-      alert(JSON.stringify(res.data));
+        // alert(JSON.stringify(res.data));
+        app.setState({ value: JSON.stringify(res.data) });
     })
   };
 
   handleSubmit = event => {
-    this.wakati(this.state.value)
+    this.wakati(this.state.value, this)
     event.preventDefault();
   };
 
@@ -81,4 +80,3 @@ export class App extends React.Component {
 }
 
 export default App;
-*/
