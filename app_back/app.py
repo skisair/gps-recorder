@@ -8,7 +8,9 @@ import dao
 
 JST = timezone(timedelta(hours=+9), 'JST')
 
-app = Flask(__name__, static_folder="./build/static", template_folder="./build")
+app = Flask(__name__)
+app.config['CORS_HEADERS'] = 'Content-Type'
+
 # 別プロセスからの応答を返却するために必要
 CORS(app)
 
@@ -111,7 +113,6 @@ def parse():
     text = data['post_text']
     res = text.split(',')
     response = {'result': res}
-    #print(response)
     return make_response(jsonify(response))
 
 
