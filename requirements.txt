@@ -11,7 +11,8 @@ geopy==2.1.0
 pydeck==0.6.2
 Flask==2.0.1
 Flask-Cors==1.10.3
-
+beacontools==2.1.0
+# PyBluez==0.23
 
 
 
