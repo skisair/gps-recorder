@@ -12,7 +12,7 @@ app = Flask(__name__, static_folder="./build/static", template_folder="./build")
 # 別プロセスからの応答を返却するために必要
 CORS(app)
 
-@app.route('/list_device', method=['GET','POST'])
+@app.route('/list_device', methods=['GET','POST'])
 def list_device():
     """
     機械一覧の取得（配列）
@@ -48,8 +48,7 @@ def list_device():
     return make_response(jsonify(response))
 
 
-
-@app.route('/get_device', method=['GET','POST'])
+@app.route('/get_device', methods=['GET','POST'])
 def get_device():
     input_parameter = request.get_json()
     device_id = input_parameter['device_id']
