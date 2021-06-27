@@ -108,13 +108,16 @@ if __name__ == '__main__':
     device_id = os.environ.get('DATA_PROCESSOR_ID', default='data_processor')
 
     exporters = os.environ.get('DEVICE_EXPORTER', default='LOCAL,AZURE').split(',')
-    topic_parsers = os.environ.get('TOPIC_PARSERS', default='sensor/+/GPRMC:GPRMCParser').split(',')
 
     mqtt_host = os.environ.get('MQTT_HOST', default='localhost')
     mqtt_port = int(os.environ.get('MQTT_PORT', default=1883))
     keep_alive = int(os.environ.get('MQTT_KEEP_ALIVE', default=60))
     # センサーから上がってくる情報は全部。
-    subscribe_mqtt_topic = os.environ.get('MQTT_TOPIC', default='sensor/#')
+    # IOT HUB でのTOPIC　devices/{device_id}/messages/events/{property_bag}
+    subscribe_mqtt_topic = os.environ.get('MQTT_TOPIC', default='devices/#')
+    topic_parsers = os.environ.get('TOPIC_PARSERS',
+                                   default='devices/+/messages/events/?data_id=GPRMC:GPRMCParser,'
+                                           'devices/+/messages/events/?data_id=GNRMC:GPRMCParser').split(',')
 
     batch_input = os.environ.get('BATCH_INPUT_FOLDER', default='')
 

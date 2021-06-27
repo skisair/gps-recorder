@@ -44,7 +44,8 @@ class CameraDevice:
         mqtt_host = os.environ.get('MQTT_HOST', default='localhost')
         mqtt_port = int(os.environ.get('MQTT_PORT', default=1883))
         keep_alive = int(os.environ.get('MQTT_KEEP_ALIVE', default=60))
-        subscribe_mqtt_topic = os.environ.get('MQTT_TOPIC', default='sensor/#')
+        # IOT HUB でのTOPIC　devices/{device_id}/messages/events/{property_bag}
+        subscribe_mqtt_topic = os.environ.get('MQTT_TOPIC', default='devices/#')
         subscribe_mqtt_topic = Template(subscribe_mqtt_topic).safe_substitute(device_id=self.device_id, **os.environ)
         client = mqtt.Client(protocol=mqtt.MQTTv311)
         client.topic = subscribe_mqtt_topic
@@ -73,7 +74,7 @@ class CameraDevice:
         logger.debug(f'{message.topic} {data}')
         org_message = json.loads(data)
         data_id = org_message['data_id']
-        if data_id == 'GPRMC':
+        if (data_id == 'GPRMC') or (data_id == 'GNRMC'):
             lat = org_message['lat']
             lon = org_message['lon']
             self.latlon = (lat,lon)
