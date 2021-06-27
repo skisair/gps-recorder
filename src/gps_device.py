@@ -217,6 +217,8 @@ class GpsDevice:
             return result
 
         try:
+            if data_id == 'GNRMC':
+                self._parse_GNRMC(data_id, values, result)
             if data_id == 'GPRMC':
                 self._parse_GPRMC(data_id, values, result)
             elif data_id == 'GPGGA':
@@ -406,6 +408,53 @@ class GpsDevice:
                 message['dgps_update'] = values[13]
                 message['dgps_id'] = values[14]
             result.append(message)
+
+    def _parse_GNRMC(self, data_id, values, result):
+        """
+        GNRMCの解析
+        :param data_id:
+        :param values:
+        :param result:
+        :return:
+        """
+        warning = values[2]
+        utc_time = values[1]
+        utc_date = values[9]
+        try:
+            gps_date_time = datetime.strptime(utc_date + utc_time, '%d%m%y%H%M%S.%f').isoformat()
+        except ValueError:
+            logger.warning(f'date format error in GNRMC {values}')
+            gps_date_time = datetime.now().isoformat()
+        if warning == 'A':
+            lat = self.parse_matrix_value(values[3])
+            lon = self.parse_matrix_value(values[5])
+            lat_d = values[4]
+            lon_d = values[6]
+            if lat_d == 'S':
+                lat = -lat
+            if lon_d == 'W':
+                lon = -lon
+            speed = float(values[7])
+            message = {
+                'data_id': data_id,
+                'gps_date_time': gps_date_time,
+                # 'warning': warning,
+                'lat': lat,
+                'lon': lon,
+                'speed': speed,
+                'mode': values[12],
+            }
+            if len(values[8]) > 0:
+                message['course'] = float(values[8])
+            if len(values[10]) > 0:
+                variation = float(values[10])
+                if values[11] == 'S':
+                    variation = -variation
+                message['variation'] = variation
+
+            result.append(message)
+        else:
+            logger.warning(f'GNRMC status is in V. values:{values}')
 
     def _parse_GPRMC(self, data_id, values, result):
         """
