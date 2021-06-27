@@ -2,6 +2,7 @@ pyserial==3.5
 paho-mqtt==1.5.1
 azure-storage-blob==12.8.1
 azure-cosmosdb-table==1.0.6
+azure-functions
 streamlit==0.83.0
 pandas==1.2.4
 plotly==4.14.3
