@@ -13,5 +13,5 @@ func new
 
 ### コードを Azure にデプロイする
 ```bash
-func azure functionapp publish iot-event-handler
+func azure functionapp publish iot-event-handler --python
 ```
