@@ -253,3 +253,44 @@ $GPGLL,3537.51961,N,13941.60464,E,013728.00,A,A*60
 - https://www.hiramine.com/physicalcomputing/general/gps_nmeaformat.html
 - http://www.spa-japan.co.jp/tech/Tech103_UbloxNmea.html
 - http://aprs.gids.nl/nmea/
+
+
+## MQTT証明書発行
+
+```bash
+# Create Root Key
+openssl genrsa -out mosquitto/cert/rootCA.key 4096
+# Create and self sign the Root Certificate
+openssl req -x509 -new -nodes -key mosquitto/cert/rootCA.key -sha256 -days 3650 -out mosquitto/cert/rootCA.crt
+
+# Create a server certificate
+openssl genrsa -out mosquitto/cert/server.key 2048
+# Create the signing (csr) 
+openssl req -new -key mosquitto/cert/server.key -out mosquitto/cert/server.csr
+# Verify the csr's content
+openssl req -in mosquitto/cert/server.csr -noout -text
+
+# Generate the certificate using the server csr and key along with the CA Root key
+openssl x509 -req -in mosquitto/cert/server.csr -CA mosquitto/cert/rootCA.crt -CAkey mosquitto/cert/rootCA.key -CAcreateserial -out mosquitto/cert/server.crt -days 500 -sha256
+# Verify the certificate's content
+openssl x509 -in mosquitto/cert/server.crt -text -noout
+
+# Create a client certificate
+# Create the certificate key
+openssl genrsa -out mosquitto/cert/client.key
+# Create the signing (csr)
+openssl req -new -key mosquitto/cert/client.key -out mosquitto/cert/client.csr
+# Verify the csr's content
+openssl req -in mosquitto/cert/client.csr -noout -text
+# Generate the certificate using the client csr and key along with the CA Root key
+openssl x509 -req -CA mosquitto/cert/rootCA.crt -CAkey mosquitto/cert/rootCA.key -CAcreateserial -in mosquitto/cert/client.csr -out mosquitto/cert/client.crt
+# Verify the certificate's content
+openssl x509 -in mosquitto/cert/client.crt -text -noout
+
+# Generate Passwords File
+docker exec -it mosquitto bash
+
+mosquitto_passwd -c /mosquitto/config/passwords.txt <username>
+# to add more users change -c to -b
+
+```

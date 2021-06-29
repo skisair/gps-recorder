@@ -1,11 +1,14 @@
 version: "3.4"
 services:
   mosquitto:
+    container_name: mosquitto
     image: eclipse-mosquitto
     restart: always
     ports:
       - "1883:1883"
+      - "8883:8883"
     volumes:
+      - ./mosquitto/cert:/mosquitto/cert
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
@@ -13,6 +16,7 @@ services:
       - backend
 
   azurite:
+    container_name: azurite
     image: mcr.microsoft.com/azure-storage/azurite
     restart: always
     ports:
@@ -24,6 +28,7 @@ services:
       - backend
 
   data_processor:
+    container_name: data_processor
     build:
       context: ./
       dockerfile: Docker/Dockerfile_data_processor
@@ -32,6 +37,7 @@ services:
     env_file:
       - config/env/data_processor.env
     volumes:
+      - ./config:/config
       - ./data:/data
     depends_on:
       - mosquitto
@@ -40,6 +46,7 @@ services:
       - backend
 
   data_analyzer:
+    container_name: data_analyzer
     build:
       context: ./
       dockerfile: Docker/Dockerfile_data_analyzer

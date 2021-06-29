@@ -1,4 +1,7 @@
 FROM python:3.9.4-slim
+RUN apt update -y
+RUN apt upgrade -y
+RUN apt install -y libssl-dev
 
 COPY ./requirements.txt /tmp/
 RUN pip install --requirement /tmp/requirements.txt

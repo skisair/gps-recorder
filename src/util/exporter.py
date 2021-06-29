@@ -4,6 +4,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 import uuid
 from string import Template
+import ssl
 
 import paho.mqtt.client as mqtt
 from azure.cosmosdb.table.tableservice import TableService
@@ -97,23 +98,63 @@ class AzureExporter:
         self.table_service.insert_or_replace_entity(self.tdata_table_name , message)
 
 
-class MqttExporter:
+'''
+path_to_root_cert = "<local path to digicert.cer file>"
+device_id = "<device id from device registry>"
+sas_token = "<generated SAS token>"
+iot_hub_name = "<iot hub name>"
+user_name = iot_hub_name+".azure-devices.net/" + device_id + "/?api-version=2018-06-30"
+host_name = iot_hub_name+".azure-devices.net"
+'''
 
+
+class MqttExporter:
     def __init__(self, device_id: str):
+        # IOT HUB でのTOPIC　devices/{device_id}/messages/events/{property_bag}
         self.device_id = device_id
         self.mqtt_host = os.environ.get('MQTT_HOST', default='localhost')
         self.mqtt_port = int(os.environ.get('MQTT_PORT', default=1883))
         self.keep_alive = int(os.environ.get('MQTT_KEEP_ALIVE', default=60))
-        self.mqtt_topic = os.environ.get('MQTT_TOPIC', default='sensor/${device_id}/${data_id}')
+        self.mqtt_topic = os.environ.get('MQTT_TOPIC', default='devices/${device_id}/messages/events/?data_id=${data_id}')
 
-        self.client = mqtt.Client(protocol=mqtt.MQTTv311)
-        self.client.connect(self.mqtt_host, port=self.mqtt_port , keepalive=self.keep_alive)
+        # 認証処理関連
+        self.path_to_root_cert = os.environ.get('MQTT_ROOT_CERT_PATH', default=None)
+        self.path_to_cert_file = os.environ.get('MQTT_CERT_PATH', default=None)
+        self.path_to_key_file = os.environ.get('MQTT_KEY_PATH', default=None)
+        self.ssl_cert = os.environ.get('SSL_CERT',default='CERT_NONE')
+        if self.ssl_cert == 'CERT_NONE':
+            self.ssl_cert = ssl.CERT_NONE
+        elif self.ssl_cert == 'CERT_REQUIRED':
+            self.ssl_cert = ssl.CERT_REQUIRED
+        else:
+            self.ssl_cert = ssl.CERT_NONE
+
+        self.mqtt_user_name = os.environ.get('MQTT_USER_NAME', default=None)
+        self.mqtt_password = os.environ.get('MQTT_PASSWORD', default=None)
+
+        self.mqtt_client = mqtt.Client(protocol=mqtt.MQTTv311)
+        self.mqtt_client.username_pw_set(
+            username=self.mqtt_user_name,
+            password=self.mqtt_password,
+        )
+        self.mqtt_client.tls_set(
+            ca_certs=self.path_to_root_cert,
+            certfile=self.path_to_cert_file,
+            keyfile=self.path_to_key_file,
+            #cert_reqs=ssl.CERT_REQUIRED,
+            cert_reqs=self.ssl_cert,
+            tls_version=ssl.PROTOCOL_TLSv1_2,
+            ciphers=None)
+        self.mqtt_client.tls_insecure_set(True)
+        self.mqtt_client.connect(self.mqtt_host, port=self.mqtt_port, keepalive=self.keep_alive)
+        #　self.client.connect(self.mqtt_host, port=self.mqtt_port , keepalive=self.keep_alive)
 
     def export(self, message):
         data_id = message['data_id']
         topic = Template(self.mqtt_topic).substitute(device_id=self.device_id, data_id=data_id, **os.environ)
         output_string = json.dumps(message)
-        self.client.publish(topic, output_string)
+        logger.debug(f'{topic}:{output_string}')
+        self.mqtt_client.publish(topic, output_string)
 
 
 class LocalExporter:
