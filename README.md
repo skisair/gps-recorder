@@ -288,7 +288,9 @@ openssl x509 -req -CA mosquitto/cert/rootCA.crt -CAkey mosquitto/cert/rootCA.key
 openssl x509 -in mosquitto/cert/client.crt -text -noout
 
 # Generate Passwords File
-docker run -it --rm -v $pwd/config:/mosquitto/config eclipse-mosquitto mosquitto_passwd -c /mosquitto/config/passwords.txt <username>
+docker exec -it mosquitto bash
+
+mosquitto_passwd -c /mosquitto/config/passwords.txt <username>
 # to add more users change -c to -b
 
 ```

@@ -129,8 +129,14 @@ class MqttExporter:
         else:
             self.ssl_cert = ssl.CERT_NONE
 
-        self.mqtt_client = mqtt.Client(protocol=mqtt.MQTTv311)
+        self.mqtt_user_name = os.environ.get('MQTT_USER_NAME', default=None)
+        self.mqtt_password = os.environ.get('MQTT_PASSWORD', default=None)
 
+        self.mqtt_client = mqtt.Client(protocol=mqtt.MQTTv311)
+        self.mqtt_client.username_pw_set(
+            username=self.mqtt_user_name,
+            password=self.mqtt_password,
+        )
         self.mqtt_client.tls_set(
             ca_certs=self.path_to_root_cert,
             certfile=self.path_to_cert_file,
@@ -141,7 +147,6 @@ class MqttExporter:
             ciphers=None)
         self.mqtt_client.tls_insecure_set(True)
         self.mqtt_client.connect(self.mqtt_host, port=self.mqtt_port, keepalive=self.keep_alive)
-
         #　self.client.connect(self.mqtt_host, port=self.mqtt_port , keepalive=self.keep_alive)
 
     def export(self, message):

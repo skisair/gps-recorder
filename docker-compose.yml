@@ -1,6 +1,7 @@
 version: "3.4"
 services:
   mosquitto:
+    container_name: mosquitto
     image: eclipse-mosquitto
     restart: always
     ports:
@@ -15,6 +16,7 @@ services:
       - backend
 
   azurite:
+    container_name: azurite
     image: mcr.microsoft.com/azure-storage/azurite
     restart: always
     ports:
@@ -26,6 +28,7 @@ services:
       - backend
 
   data_processor:
+    container_name: data_processor
     build:
       context: ./
       dockerfile: Docker/Dockerfile_data_processor
@@ -43,6 +46,7 @@ services:
       - backend
 
   data_analyzer:
+    container_name: data_analyzer
     build:
       context: ./
       dockerfile: Docker/Dockerfile_data_analyzer

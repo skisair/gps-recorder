@@ -56,11 +56,12 @@ class GpsEventHandler:
 
 
 class DataProcessor:
-    def __init__(self, mqtt_host, mqtt_port, topic, event_handler):
+    def __init__(self, mqtt_host, mqtt_port, topic, event_handler, keep_alive:int = 60):
         self.running = True
         self.event_handler = event_handler
         self.mqtt_host = mqtt_host
         self.mqtt_port = mqtt_port
+        self.keep_alive = keep_alive
         self.mqtt_client = mqtt.Client(protocol=mqtt.MQTTv311)
         self.mqtt_client.topic = topic
         logger.info(f'topic:{topic}')
@@ -180,5 +181,7 @@ if __name__ == '__main__':
             mqtt_host=mqtt_host,
             mqtt_port=mqtt_port,
             topic=subscribe_mqtt_topic,
-            event_handler=event_handler)
+            event_handler=event_handler,
+            keep_alive=keep_alive,
+        )
         data_processor.run()
