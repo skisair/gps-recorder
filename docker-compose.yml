@@ -5,7 +5,9 @@ services:
     restart: always
     ports:
       - "1883:1883"
+      - "8883:8883"
     volumes:
+      - ./mosquitto/cert:/mosquitto/cert
       - ./mosquitto/config:/mosquitto/config
       - ./mosquitto/data:/mosquitto/data
       - ./mosquitto/log:/mosquitto/log
@@ -32,6 +34,7 @@ services:
     env_file:
       - config/env/data_processor.env
     volumes:
+      - ./config:/config
       - ./data:/data
     depends_on:
       - mosquitto
