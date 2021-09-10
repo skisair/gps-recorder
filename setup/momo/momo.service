@@ -1,0 +1,13 @@
+[Unit]
+Description=Momo WebRTC Server
+After=network.target
+
+[Service]
+User=root
+Type=simple
+WorkingDirectory=/opt/momo
+ExecStart=/opt/momo/momo --no-audio-device test
+Restart=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=Node Proxy Server
+After=network.target
+
+[Service]
+User=root
+Type=simple
+WorkingDirectory=/home/pi/reverse_proxy
+ExecStart=node /home/pi/reverse_proxy/proxy.js
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,85 @@
+<!doctype html>
+<html>
+  <head>
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+      <link rel="shortcut icon" href="#">
+      <title>Internet Remote Controller</title>
+      <link rel="stylesheet" href="/static/style/default.css"/>
+      <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"/>
+      <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+      <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+      <script src="/static/script/socket.io.js"></script>
+      <script src="/static/script/remote_controller.js"></script>
+  </head>
+  <body>
+    <div class="header">
+        <h3 align="center">Sanyo Internet Remote Contoroller</h3>
+    </div>
+    <div class="controller_left"></div>
+    <div class="video_center">
+        <div>
+            <select id="codec">
+                <option value="H264">H264</option>
+                <option value="VP8">VP8</option>
+                <option value="VP9">VP9</option>
+                <option value="AV1">AV1</option>
+            </select>
+            <input type="button" onclick="connect();" value="Connect">
+            <input type="button" onclick="disconnect();" value="Disconnect">
+        </div>
+        <div>
+            <video id="remote_video" autoplay style="border: 3px solid gray;" width="100%"></video>
+        </div>
+    </div>
+    <div class="controller_spacer"></div>
+    <div class="controller_switch">
+        <table align="center">
+            <tr>
+                <td colspan="3" align="center"><image onmousedown="boot()" class="button" src="/static/image/button.png"/></image></td>
+            </tr>
+            <tr><td><br><br><br><br></td></tr>
+            <tr>
+                <td onclick="forwardLeft()">　</td>
+                <td onclick="forward()"><image class="button" src="/static/image/forward.png"/></td>
+                <td onclick="forwardRight()"> </td>
+            </tr>
+            <tr>
+                <td onclick="left()"><image class="button" src="/static/image/left.png"/></td>
+                <td onclick="stop()"><image class="button" src="/static/image/suspend.png"/></td>
+                <td onclick="right()"><image class="button" src="/static/image/right.png"/></td>
+            </tr>
+            <tr>
+                <td onclick="backwardLeft()"> </td>
+                <td onclick="backward()"><image class="button" src="/static/image/backward.png"/></td>
+                <td onclick="backwardRight()"> </td>
+            </tr>
+        </table>
+    </div>
+    <div class="controller_spacer">
+        <table>
+            <tr>
+                <td>FB:</td>
+                <td id="switch_fb"></td>
+            </tr>
+            <tr>
+                <td>LR:</td>
+                <td id="switch_lr"></td>
+            </tr>
+            <tr>
+                <td>SPEED:</td>
+                <td id="dial_speed"></td>
+            </tr>
+            <tr>
+                <td>BOOT:</td>
+                <td id="switch_boot"></td>
+            </tr>
+        </table>
+    </div>
+    <div class="controller_speed">
+        <input class="speed" id="slide" type="range" min="0" max="5" step="1" value="0" orient="vertical"
+               width="10px" onchange="changeSpeed(this.value)">
+    </div>
+    <script type="text/javascript" src="./static/script/webrtc.js"></script>
+  </body>
+</html>
