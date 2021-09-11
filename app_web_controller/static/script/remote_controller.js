@@ -7,18 +7,74 @@ status['switch_lr'] = 0;
 status['dial_speed'] = 0;
 status['switch_boot'] = 0;
 
+const NEUTRAL = 0
+const MOVE_FORWARD = 2
+const MOVE_BACKWARD = 1
+const TURN_LEFT = 2
+const TURN_RIGHT = 1
+const BOOT = 54
+
+function generateUuid() {
+  // https://github.com/GoogleChrome/chrome-platform-analytics/blob/master/src/internal/identifier.js
+  // const FORMAT: string = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx";
+  let chars = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".split("");
+  for (let i = 0, len = chars.length; i < len; i++) {
+    switch (chars[i]) {
+      case "x":
+        chars[i] = Math.floor(Math.random() * 16).toString(16);
+        break;
+      case "y":
+        chars[i] = (Math.floor(Math.random() * 4) + 8).toString(16);
+        break;
+    }
+  }
+  return chars.join("");
+}
+
+const uuid = generateUuid();
+
+status['uuid'] = uuid;
+
 socket.on('status', (message) => {
+
   console.log('status:' + JSON.stringify(message));
-  console.log('switch_lr' + document.getElementById('switch_lr'))
-  console.log('dial_speed' + document.getElementById('dial_speed'))
-  document.getElementById('switch_fb').innerText = ' ' + String(message['switch_fb']);
-  document.getElementById('switch_lr').innerText = ' ' + String(message['switch_lr']);
-  document.getElementById('dial_speed').innerText = ' ' + String(message['dial_speed']);
-  document.getElementById('switch_boot').innerText = ' ' + String(message['switch_boot']);
+  if(message['uuid'] == uuid){
+    console.log('perf:' + (performance.now() - message['time']).toFixed(1) + ' ms');
+  }
+
+  if(message['switch_fb'] == MOVE_FORWARD){
+    document.getElementById('forward').src = "/static/image/forward_on.png";
+    document.getElementById('backward').src = "/static/image/backward.png";
+  }else if(message['switch_fb'] == MOVE_BACKWARD){
+    document.getElementById('forward').src = "/static/image/forward.png";
+    document.getElementById('backward').src = "/static/image/backward_on.png";
+  }else{
+    document.getElementById('forward').src = "/static/image/forward.png";
+    document.getElementById('backward').src = "/static/image/backward.png";
+  }
+
+  if(message['switch_lr'] == TURN_LEFT){
+    document.getElementById('left').src = "/static/image/left_on.png";
+    document.getElementById('right').src = "/static/image/right.png";
+  }else if(message['switch_lr'] == TURN_RIGHT){
+    document.getElementById('left').src = "/static/image/left.png";
+    document.getElementById('right').src = "/static/image/right_on.png";
+  }else{
+    document.getElementById('left').src = "/static/image/left.png";
+    document.getElementById('right').src = "/static/image/right.png";
+  }
+
+  if(message['switch_boot'] == BOOT){
+    document.getElementById('button').src = "/static/image/button_on.png";
+  } else {
+    document.getElementById('button').src = "/static/image/button.png";
+  }
+  document.getElementById('slide').value = message['dial_speed'];
 });
 
 function control(){
-  console.log(status);
+  status['time'] = performance.now();
+  console.log('control:' + JSON.stringify(status));
   socket.emit('control', status);
 }
 
