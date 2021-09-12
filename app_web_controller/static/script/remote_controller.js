@@ -78,6 +78,21 @@ function control(){
   socket.emit('control', status);
 }
 
+let camera_connected = false;
+
+function camera(){
+  if(camera_connected){
+    disconnect();
+    document.getElementById("camera").src = "/static/image/camera.png";
+    camera_connected = false;
+  }else{
+    connect();
+    document.getElementById("camera").src = "/static/image/camera_on.png";
+    camera_connected = true;
+  }
+
+}
+
 function boot() {
   console.log('boot()')
   status['switch_boot'] = 54;

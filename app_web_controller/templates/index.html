@@ -17,27 +17,21 @@
         <h3 align="center">Sanyo Internet Remote Contoroller</h3>
     </div>
     <div class="controller_left"></div>
-    <div class="video_controller">
-        <select id="codec" hidden="true">
-            <option value="H264">H264</option>
-            <option value="VP8">VP8</option>
-            <option value="VP9">VP9</option>
-            <option value="AV1">AV1</option>
-        </select>
-        <input type="button" onclick="connect();" value="Connect">
-        <input type="button" onclick="disconnect();" value="Disconnect">
-    </div>
     <div class="video_center">
-        <video id="remote_video" autoplay style="border: 3px solid gray;" width="100%"></video>
+        <video id="remote_video" autoplay style="border: 3px solid gray;" width="100%" height="100%"></video>
     </div>
     <div class="controller_spacer"></div>
-    <div class="controller_switch">
+    <div class="controller_buttons">
         <table align="center">
             <tr>
-                <td colspan="2" align="center" onclick="boot()"><image id="button" class="button" src="/static/image/button.png"/></image></td>
-                <td colspan="1" align="center"><image id="camera"  class="button" src="/static/image/camera.png"/></image></td>
+                <td align="center" onclick="boot()"><image id="button" class="button" src="/static/image/button.png"/></image></td>
+                <td>　　</td>
+                <td align="center" onclick="camera()"><image id="camera"  class="button" src="/static/image/camera.png"/></image></td>
             </tr>
-            <tr><td><br><br><br><br></td></tr>
+        </table>
+    </div>
+    <div class="controller_switch">
+        <table align="center">
             <tr>
                 <td onclick="forwardLeft()">　</td>
                 <td onclick="forward()"><image id="forward" class="button" src="/static/image/forward.png"/></td>
