@@ -14,11 +14,6 @@ SIGNAL_INTERVAL = int(os.environ.get('SIGNAL_INTERVAL', default='10'))
 app = Flask(__name__)
 socketio = SocketIO(app)
 
-try:
-    serial_controller = SerialController(port=SERIAL_PORT, baud_rate=BAUD_RATE)
-except Exception as e:
-    serial_controller = DummySerialController(port=SERIAL_PORT, baud_rate=BAUD_RATE)
-
 
 @socketio.on('control')
 def control(message):
@@ -34,10 +29,15 @@ def index():
 
 if __name__ == "__main__":
     print('start up')
+    try:
+        serial_controller = SerialController(port=SERIAL_PORT, baud_rate=BAUD_RATE)
+    except Exception as e:
+        serial_controller = DummySerialController(port=SERIAL_PORT, baud_rate=BAUD_RATE)
+
     thread = threading.Thread(target=serial_controller.run)
     thread.daemon = True
     thread.start()
 
     app.debug = True
-    socketio.run(app, host='0.0.0.0', port=8081,)
+    socketio.run(app, host='0.0.0.0', port=8081, use_reloader=False)
 

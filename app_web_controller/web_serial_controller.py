@@ -61,9 +61,8 @@ class SerialController:
     def on_message(self, client, userdata, message):
         topic = message.topic
         data = message.payload.decode()
-        logger.debug(f'{topic} : {data}')
+        logger.info(f'{topic} : {data}')
         json_message = json.loads(data)
-
         self.set_signal(json_message)
 
     def set_signal(self, json_message):
@@ -76,9 +75,15 @@ class SerialController:
     def send_signal(self):
         try:
             d = max(self.switch_boot, (self.switch_fb * 3 + self.switch_lr) * 6 + self.dial_speed)
+            # 右の３速：(0*3 + 1) * 6 + 3 = 9
+            # print(f'serial:{d} / {self.switch_boot},{self.switch_fb},{self.switch_lr},{self.dial_speed}')
             data = struct.pack('B', d)
             self._serial.write(data)
-            self._serial.flush()
+            # self._serial.flush()
+            buffer = self._serial.read(1)
+            resp = struct.unpack('B',buffer)
+            # print(f'SERIAL RESP:{resp}')
+
         except Exception as e:
             logging.info(f'self.switch_fb:{self.switch_fb} self.switch_lr:{self.switch_lr} self.dial_speed:{self.dial_speed}')
             logging.error(traceback.format_exc())
@@ -107,6 +112,10 @@ class  DummySerialController(SerialController):
         self.switch_boot = SerialController.NEUTRAL
 
         self.running = True
+        print('init')
 
     def send_signal(self):
+        d = max(self.switch_boot, (self.switch_fb * 3 + self.switch_lr) * 6 + self.dial_speed)
+        # 右の３速：(0*3 + 1) * 6 + 3 = 9
+        print(f'serial:{d} / {self.switch_boot},{self.switch_fb},{self.switch_lr},{self.dial_speed}')
         pass
