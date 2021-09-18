@@ -1,4 +1,4 @@
-let socket = io.connect({ transports: ["polling"] });
+let socket = io.connect('/web-ctl',{ transports: ["polling"] });
 let dial_speed = 0;
 
 let status = {}
@@ -34,6 +34,11 @@ function generateUuid() {
 const uuid = generateUuid();
 
 status['uuid'] = uuid;
+
+socket.on('signal', function(message){
+  console.log('signal:' + JSON.stringify(message));
+  document.getElementById('signal').innerText = message.signal;
+});
 
 socket.on('status', (message) => {
 

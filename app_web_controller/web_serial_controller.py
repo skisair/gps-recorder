@@ -4,6 +4,9 @@ import json
 import time
 from datetime import timezone, timedelta
 import traceback
+import threading
+import socketio
+import asyncio
 
 import serial
 import struct
@@ -39,7 +42,24 @@ class SerialController:
     SPEED_LOW = 0
     SPEED_HIGH = 5
 
-    def __init__(self, port: str = SERIAL_PORT, baud_rate: int = BAUD_RATE):
+    __instance = None
+    __thread = None
+    sio = None
+    __con = None
+
+    @staticmethod
+    def get_instance(port: str = SERIAL_PORT, baud_rate: int = BAUD_RATE, loop = None):
+        if SerialController.__instance is None:
+            SerialController(port=port, baud_rate=baud_rate)
+        return SerialController.__instance
+
+    def __init__(self, port: str = SERIAL_PORT, baud_rate: int = BAUD_RATE, loop = None):
+
+        if SerialController.__instance is not None:
+            raise Exception('use get_instance.')
+        else:
+            SerialController.__instance = self
+
         self._serial = serial.Serial(port)
         self._serial.baudrate = baud_rate
         self._serial.parity = serial.PARITY_NONE
@@ -53,6 +73,12 @@ class SerialController:
         self.switch_boot = SerialController.NEUTRAL
 
         self.running = True
+        self.loop = loop
+
+        SerialController.__thread = threading.Thread(target=self.run)
+        SerialController.__thread.daemon = True
+        SerialController.__thread.start()
+
         print(f'connected to serial')
 
     def on_connect(self, client, userdata, flags, respons_code):
@@ -61,38 +87,54 @@ class SerialController:
     def on_message(self, client, userdata, message):
         topic = message.topic
         data = message.payload.decode()
-        logger.info(f'{topic} : {data}')
+        print(f'{topic} : {data}')
         json_message = json.loads(data)
         self.set_signal(json_message)
 
     def set_signal(self, json_message):
-        print(f'serial:{json_message}')
+        # print(f'serial:{json_message}')
         self.switch_fb = json_message['switch_fb']
         self.switch_lr = json_message['switch_lr']
         self.dial_speed = json_message['dial_speed']
         self.switch_boot = json_message['switch_boot']
 
+    def disp_signal(self):
+        d = self.calc_signal()
+        return ('000000' + bin(d)[2:])[-6:]
+
     def send_signal(self):
         try:
-            d = max(self.switch_boot, (self.switch_fb * 3 + self.switch_lr) * 6 + self.dial_speed)
-            # 右の３速：(0*3 + 1) * 6 + 3 = 9
+            d = self.calc_signal()
             # print(f'serial:{d} / {self.switch_boot},{self.switch_fb},{self.switch_lr},{self.dial_speed}')
             data = struct.pack('B', d)
             self._serial.write(data)
-            # self._serial.flush()
-            buffer = self._serial.read(1)
-            resp = struct.unpack('B',buffer)
-            # print(f'SERIAL RESP:{resp}')
-
+            message = {
+                'signal': ('000000' + bin(d)[2:])[-6:],
+            }
+            SerialController.sio.emit('signal', message, namespace='/web-ctl')
         except Exception as e:
             logging.info(f'self.switch_fb:{self.switch_fb} self.switch_lr:{self.switch_lr} self.dial_speed:{self.dial_speed}')
             logging.error(traceback.format_exc())
             logging.error(f'Serial Error:{e}')
 
+    def calc_signal(self):
+        # 右の３速：(0*3 + 1) * 6 + 3 = 9
+        d = max(self.switch_boot, (self.switch_fb * 3 + self.switch_lr) * 6 + self.dial_speed)
+        return d
+
     def stop(self):
         self.running = False
 
     def run(self):
+        SerialController.sio = socketio.Client()
+        while True:
+            try:
+                SerialController.sio.connect('ws://localhost:8081', namespaces=['/web-ctl'])
+                break
+            except Exception as e:
+                print(e)
+                time.sleep(1)
+
         while self.running:
             start_time = time.perf_counter()
             self.send_signal()
@@ -102,20 +144,44 @@ class SerialController:
                 time.sleep(sleep_time)
 
 
-class  DummySerialController(SerialController):
+class DummySerialController(SerialController):
 
-    def __init__(self, port: str = SERIAL_PORT, baud_rate: int = BAUD_RATE):
+    __instance = None
+
+    @staticmethod
+    def get_instance(port: str = SERIAL_PORT, baud_rate: int = BAUD_RATE, loop = None):
+        if DummySerialController.__instance is None:
+            DummySerialController(port=port, baud_rate=baud_rate, loop=loop)
+        return DummySerialController.__instance
+
+    def __init__(self, port: str = SERIAL_PORT, baud_rate: int = BAUD_RATE, loop = None):
+
+        DummySerialController.__instance = self
 
         self.switch_fb = SerialController.NEUTRAL
         self.switch_lr = SerialController.NEUTRAL
         self.dial_speed = SerialController.SPEED_LOW
         self.switch_boot = SerialController.NEUTRAL
+        self.loop = loop
 
         self.running = True
+
+        SerialController.__thread = threading.Thread(target=self.run)
+        SerialController.__thread.daemon = True
+        SerialController.__thread.start()
+
         print('init')
 
     def send_signal(self):
         d = max(self.switch_boot, (self.switch_fb * 3 + self.switch_lr) * 6 + self.dial_speed)
+        message = {
+            'signal': ('000000' + bin(d)[2:])[-6:],
+        }
+        try:
+            SerialController.sio.emit('signal', message, namespace='/web-ctl')
+        except Exception as e:
+            print(e)
+            print('Emit fail')
         # 右の３速：(0*3 + 1) * 6 + 3 = 9
-        print(f'serial:{d} / {self.switch_boot},{self.switch_fb},{self.switch_lr},{self.dial_speed}')
+        # print(f'serial:{d} / {self.switch_boot},{self.switch_fb},{self.switch_lr},{self.dial_speed}')
         pass

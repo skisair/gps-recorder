@@ -1,8 +1,7 @@
+import asyncio
 import os
-import threading
-
 from flask import Flask, render_template
-from flask_socketio import SocketIO, emit, send, join_room, leave_room
+from flask_socketio import SocketIO, emit
 
 from web_serial_controller import SerialController, DummySerialController
 
@@ -14,12 +13,16 @@ SIGNAL_INTERVAL = int(os.environ.get('SIGNAL_INTERVAL', default='10'))
 app = Flask(__name__)
 socketio = SocketIO(app)
 
+@socketio.on('signal', namespace='/web-ctl')
+def control(message):
+    app.logger.info(message)
+    emit('signal', message, broadcast=True, namespace='/web-ctl')
 
-@socketio.on('control')
+@socketio.on('control', namespace='/web-ctl')
 def control(message):
     app.logger.info(message)
     serial_controller.set_signal(message)
-    emit('status', message, broadcast=True)
+    emit('status', message, broadcast=True, namespace='/web-ctl')
 
 
 @app.route('/')
@@ -29,14 +32,11 @@ def index():
 
 if __name__ == "__main__":
     print('start up')
+    loop = asyncio.get_event_loop()
     try:
-        serial_controller = SerialController(port=SERIAL_PORT, baud_rate=BAUD_RATE)
+        serial_controller = SerialController.get_instance(port=SERIAL_PORT, baud_rate=BAUD_RATE, loop=loop)
     except Exception as e:
-        serial_controller = DummySerialController(port=SERIAL_PORT, baud_rate=BAUD_RATE)
-
-    thread = threading.Thread(target=serial_controller.run)
-    thread.daemon = True
-    thread.start()
+        serial_controller = DummySerialController.get_instance(port=SERIAL_PORT, baud_rate=BAUD_RATE, loop=loop)
 
     app.debug = True
     socketio.run(app, host='0.0.0.0', port=8081, use_reloader=False)
