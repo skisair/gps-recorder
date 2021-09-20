@@ -1,5 +1,5 @@
-'http-proxy'
-
+# Node Proxyのインストール
+```bash
 sudo npm install -g http-proxy
 
 cd ~
@@ -9,10 +9,11 @@ npm link http-proxy
 
 sudo node proxy.js
 
-
 #### サービス化
 sudo cp node-proxy.service /etc/systemd/system/node-proxy.service
 
 sudo systemctl daemon-reload
 sudo systemctl enable node-proxy
 sudo systemctl start node-proxy
+```
+

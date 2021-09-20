@@ -6,7 +6,7 @@ After=network.target
 User=root
 Type=simple
 WorkingDirectory=/opt/momo
-ExecStart=/opt/momo/momo --no-audio-device test
+ExecStart=./momo --no-audio-device test
 Restart=yes
 
 [Install]
