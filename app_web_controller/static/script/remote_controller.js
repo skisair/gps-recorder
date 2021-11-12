@@ -179,3 +179,19 @@ function left() {
   status['switch_lr'] = 2;
   control();
 }
+
+function right_90() {
+  console.log('right_90()')
+  status['switch_fb'] = 0;
+  status['switch_lr'] = 1;
+  control();
+  window.setTimeout( bootOff, 5000 );
+}
+
+function left_90() {
+  console.log('left_90()')
+  status['switch_fb'] = 0;
+  status['switch_lr'] = 2;
+  control();
+  window.setTimeout( bootOff, 5000 );
+}

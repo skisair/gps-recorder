@@ -9,7 +9,7 @@ import traceback
 
 import serial
 
-from util.exporter import LocalExporter, MqttExporter
+from util.exporter import LocalExporter, MqttExporter, QueueExporter
 
 # Macの場合、 /dev/tty.usbserial-* の形で認識される。WindowsならCOM3とかCOM4とかになるはず
 # ls /dev/tty.usbserial* で出てきたポート名を入れること
@@ -310,6 +310,8 @@ class GpsDevice:
             srn = values[7 + sv_in_message * 4]
             if len(srn) > 0:
                 message['srn'] = int(srn)
+            else:
+                message['srn'] = 0
             result.append(message)
 
     def _parse_GPGSA(self, data_id, values, result):
@@ -534,6 +536,9 @@ if __name__ == '__main__':
             if 'MQTT' in device_exporter:
                 mqtt_exporter = MqttExporter(device_id)
                 device.add(mqtt_exporter)
+            if 'QUEUE' in device_exporter:
+                queue_exporter = QueueExporter(device_id)
+                device.add(queue_exporter)
 
             try:
                 device.run()
