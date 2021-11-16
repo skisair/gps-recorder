@@ -166,7 +166,7 @@ class QueueExporter:
     """
     ローカル出力クラス
     """
-    def __init__(self, device_id: str, queue):
+    def __init__(self, device_id: str, mem_queue):
         """
         環境変数
         OUTPUT_FOLDER : 出力先フォルダパス data/${device_id}
@@ -175,7 +175,7 @@ class QueueExporter:
         (idはuuidにより一意な値を入れ、重複を防ぐ）
         :param device_id: デバイスID
         """
-        self.mem_queue = queue
+        self.mem_queue = mem_queue
         self.device_id = device_id
         # 出力フォルダの設定作成
         self.output_folder = os.environ.get('OUTPUT_FOLDER', default='data/${device_id}')
