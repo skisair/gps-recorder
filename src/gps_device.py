@@ -333,11 +333,19 @@ class GpsDevice:
         """
         total_messages = int(values[1])
         message_number = int(values[2])
+        # parse error in data_id:GPGSV values:['$GPGSV', '1', '1', '01', '18', '', '', '28']
         total_sv = int(values[3])
         for sv_in_message in range(4):
             sv_num = ((message_number - 1) * 4 + sv_in_message + 1)
             if sv_num > total_sv:
                 break
+            el_degree = values[5 + sv_in_message * 4]
+            az_degree = values[6 + sv_in_message * 4]
+            if len(az_degree)==0 :
+                az_degree = 0
+            if len(el_degree)==0:
+                el_degree = 0
+
             message = {
                 'data_id': data_id,
                 # 'total_messages': total_messages,
@@ -346,8 +354,8 @@ class GpsDevice:
                 'sv_num': sv_num,
                 # 'sv_in_message': sv_in_message,
                 'sv_prn': values[4 + sv_in_message * 4],
-                'el_degree': int(values[5 + sv_in_message * 4]),
-                'az_degree': int(values[6 + sv_in_message * 4]),
+                'el_degree': int(el_degree),
+                'az_degree': int(az_degree),
             }
             srn = values[7 + sv_in_message * 4]
             if len(srn) > 0:
