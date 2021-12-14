@@ -102,7 +102,7 @@ function boot() {
   console.log('boot()')
   status['switch_boot'] = 54;
   control();
-  window.setTimeout( bootOff, 5000 );
+  window.setTimeout( bootOff, 3000 );
 }
 
 function bootOff() {
@@ -115,7 +115,6 @@ function changeSpeed(speed){
   status['dial_speed'] = Number(speed);
   control()
 }
-
 
 function stop() {
   console.log('stop()')
@@ -195,3 +194,89 @@ function left_90() {
   control();
   window.setTimeout( bootOff, 5000 );
 }
+
+let last_update = 0;
+
+// 匿名関数を即時実行
+(function(){
+  // ------------------------------------------------------------
+  // Gemapad API に対応しているか調べる
+  // ------------------------------------------------------------
+  if(!(window.Gamepad)) return;
+  if(!(navigator.getGamepads)) return;
+
+  // ------------------------------------------------------------
+  // 一定時間隔で、繰り返し実行される関数
+  // ------------------------------------------------------------
+  setInterval(function(){
+    let switch_fb = status['switch_fb'];
+    let switch_lr = status['switch_lr'];
+    var str = "";
+    // ゲームパッドリストを取得する
+    var gamepad_list = navigator.getGamepads();
+    // ゲームパッドリスト内のアイテム総数を取得する
+    var num = gamepad_list.length;
+    var i;
+    for(i=0;i < num;i++){
+      // ------------------------------------------------------------
+      // Gamepad オブジェクトを取得する
+      // ------------------------------------------------------------
+      var gamepad = gamepad_list[i];
+      if(!gamepad) continue;
+
+      let buttons = gamepad.buttons;
+      if(buttons[2].pressed){ // ■
+        boot();
+      }
+      if(gamepad.timestamp - last_update > 0.5){
+        if(buttons[1].pressed){ // 〇
+          camera();
+          last_update = gamepad.timestamp;
+        }
+
+        if(buttons[15].pressed){ // 右
+          dial_speed = dial_speed + 1;
+          if(dial_speed > 5){
+            dial_speed = 5;
+          }
+          changeSpeed(dial_speed)
+          last_update = gamepad.timestamp;
+        }
+        if(buttons[14].pressed){ // 左
+          dial_speed = dial_speed - 1;
+          if(dial_speed < 0){
+            dial_speed = 0;
+          }
+          changeSpeed(dial_speed)
+          last_update = gamepad.timestamp;
+        }
+      }
+
+      let axes = gamepad.axes;
+      if(axes[3] > 0.25){
+        status['switch_fb'] = 1;
+      }else if(axes[3] < -0.25) {
+        status['switch_fb'] = 2;
+      }else {
+        status['switch_fb'] = 0;
+      }
+
+      if(axes[2] > 0.25){
+        status['switch_lr'] = 1;
+      }else if(axes[2] < -0.25) {
+        status['switch_lr'] = 2;
+      }else {
+        status['switch_lr'] = 0;
+      }
+      if((switch_fb == status['switch_fb']) && (switch_lr == status['switch_lr'])){
+        //console.log('pass');
+      } else {
+        control();
+      }
+    }
+    //sleep(0.1)
+    // console.log(str);
+
+  },1000/5);
+
+})();
