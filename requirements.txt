@@ -18,4 +18,3 @@ ephem==4.1
 folium
 streamlit_folium
 
-
