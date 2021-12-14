@@ -1,0 +1,13 @@
+[Unit]
+Description=Web Controller Server
+After=network.target
+
+[Service]
+User=pi
+Type=simple
+WorkingDirectory=/home/pi/app_web_controller
+ExecStart=sudo -E python app.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

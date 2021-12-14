@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import queue
 from datetime import datetime, timezone, timedelta
 import uuid
 from string import Template
@@ -199,3 +200,34 @@ class LocalExporter:
         with open(file=os.path.join(folder, file_name), mode='w', encoding='UTF-8') as f:
             f.write(output_string)
 
+queue_list = {}
+
+class QueueExporter:
+    """
+    ローカル出力クラス
+    """
+    def __init__(self, device_id: str, mem_queue):
+        """
+        環境変数
+        OUTPUT_FOLDER : 出力先フォルダパス data/${device_id}
+        OUTPUT_FOLDER_FORMAT : 出力先振分フォーマット %Y/%m/%d/%H
+        OUTPUT_FILE_FORMAT : 出力ファイル名 %Y%m%d%H%M%S%f-${id}.json
+        (idはuuidにより一意な値を入れ、重複を防ぐ）
+        :param device_id: デバイスID
+        """
+        self.mem_queue = mem_queue
+        self.device_id = device_id
+        # 出力フォルダの設定作成
+        self.output_folder = os.environ.get('OUTPUT_FOLDER', default='data/${device_id}')
+        self.output_folder = Template(self.output_folder).substitute(device_id=device_id, **os.environ)
+        self.output_folder_format = os.environ.get('OUTPUT_FOLDER_FORMAT', default='%Y/%m/%d/%H')
+        self.output_file_format = os.environ.get('OUTPUT_FILE_FORMAT', default='%Y%m%d%H%M%S%f-${data_id}-${id}.json')
+        os.makedirs(self.output_folder, exist_ok=True)
+
+    def export(self, message):
+        """
+        メッセージの出力（フォルダにJSONで保存）
+        :param message:
+        :return:
+        """
+        self.mem_queue.put(message)

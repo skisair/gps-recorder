@@ -3,7 +3,7 @@ paho-mqtt==1.5.1
 azure-storage-blob==12.8.1
 azure-cosmosdb-table==1.0.6
 azure-functions
-streamlit==0.83.0
+streamlit==1.2.0
 pandas==1.2.4
 plotly==4.14.3
 opencv-python==4.5.2.54
@@ -12,6 +12,9 @@ geopy==2.1.0
 pydeck==0.6.2
 Flask==2.0.1
 Flask-Cors==1.10.3
-
-
+flask_socketio==5.1.0
+websocket-client==1.2.1
+ephem==4.1
+folium
+streamlit_folium
 

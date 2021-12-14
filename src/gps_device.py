@@ -9,7 +9,7 @@ import traceback
 
 import serial
 
-from util.exporter import LocalExporter, MqttExporter
+from util.exporter import LocalExporter, MqttExporter, QueueExporter
 
 # Macの場合、 /dev/tty.usbserial-* の形で認識される。WindowsならCOM3とかCOM4とかになるはず
 # ls /dev/tty.usbserial* で出てきたポート名を入れること
@@ -66,9 +66,19 @@ class SerialPort:
         情報読み込み
         :return:
         """
-        gps_raw_data = self.ser.readline().decode('utf-8')
+        try:
+            gps_raw_data = self.ser.readline().decode('utf-8')
+        except UnicodeDecodeError as e:
+            print(e)
+            return ''
+        except serial.serialutil.SerialException as e:
+            print(e)
+            return ''
+
         return gps_raw_data
 
+    def close(self):
+        self.ser.close()
 
 class DummySerialPort:
     """
@@ -142,19 +152,25 @@ class GpsDevice:
         """
         self.device_id = device_id
         self.port = port
+        self.baudrate = baudrate
+        self.parity = parity
+        self.bytesize = bytesize
+        self.stopbits = stopbits
+        self.xonxoff = xonxoff
+        self.rtscts = rtscts
         self.running = True
         if len(dummy_script) > 0:
             self.sensor = DummySerialPort(dummy_script)
         else:
             self.sensor = SerialPort(
-                port=port,
-                baudrate=baudrate,
-                parity=parity,
-                bytesize=bytesize,
-                stopbits=stopbits,
+                port=self.port,
+                baudrate=self.baudrate,
+                parity=self.parity,
+                bytesize=self.bytesize,
+                stopbits=self.stopbits,
                 timeout=None,
-                xonxoff=xonxoff,
-                rtscts=rtscts,
+                xonxoff=self.xonxoff,
+                rtscts=self.rtscts,
             )
 
         self.exporters = []
@@ -182,16 +198,32 @@ class GpsDevice:
     def run(self):
         while self.running:
             gps_raw_data = self.sensor.read()
-            gps_data, check_sum = gps_raw_data.split('*')
-            gps_data = gps_data.split(',')
-            # logger.debug(gps_data)
-            messages = self._parse(gps_data)
-            for message in messages:
-                date_time = datetime.now(JST).strftime('%Y%m%d%H%M%S%f')
-                message['device_id'] = self.device_id
-                message['local_time'] = date_time
-                logger.debug(message)
-                self._output(message)
+            gps_raw_data = gps_raw_data.replace('\x00', '')
+            try:
+                gps_data, check_sum = gps_raw_data.split('*')
+                gps_data = gps_data.split(',')
+                messages = self._parse(gps_data)
+                for message in messages:
+                    date_time = datetime.now(JST).strftime('%Y%m%d%H%M%S%f')
+                    message['device_id'] = self.device_id
+                    message['local_time'] = date_time
+                    logger.debug(message)
+                    self._output(message)
+            except ValueError:
+                pass
+                '''
+                self.sensor.close()
+                self.sensor = SerialPort(
+                    port=self.port,
+                    baudrate=self.baudrate,
+                    parity=self.parity,
+                    bytesize=self.bytesize,
+                    stopbits=self.stopbits,
+                    timeout=None,
+                    xonxoff=self.xonxoff,
+                    rtscts=self.rtscts,
+                )
+                '''
 
     @staticmethod
     def parse_matrix_value(input: str) -> float:
@@ -219,19 +251,29 @@ class GpsDevice:
         try:
             if data_id == 'GNRMC':
                 self._parse_GNRMC(data_id, values, result)
-            if data_id == 'GPRMC':
+            elif data_id == 'GPRMC':
                 self._parse_GPRMC(data_id, values, result)
             elif data_id == 'GPGGA':
                 self._parse_GPGGA(data_id, values, result)
+            elif data_id == 'GNVTG':
+                self._parse_GPVTG(data_id, values, result)
             elif data_id == 'GPVTG':
                 self._parse_GPVTG(data_id, values, result)
             elif data_id == 'GPGSA':
                 self._parse_GPGSA(data_id, values, result)
+            elif data_id == 'GNGSA':
+                self._parse_GPGSA(data_id, values, result)
+            elif data_id == 'GNGSV':
+                self._parse_GPGSV(data_id, values, result)
             elif data_id == 'GPGSV':
                 self._parse_GPGSV(data_id, values, result)
+            elif data_id == 'GNGLL':
+                self._parse_GPGLL(data_id, values, result)
             elif data_id == 'GPGLL':
                 self._parse_GPGLL(data_id, values, result)
             elif data_id == 'GPTXT':
+                logger.info(f'message from device : {" ".join(values)}')
+            elif data_id == 'GNTXT':
                 logger.info(f'message from device : {" ".join(values)}')
             else:
                 logger.warning(f'data_id {data_id} is not supported : {values}')
@@ -291,11 +333,19 @@ class GpsDevice:
         """
         total_messages = int(values[1])
         message_number = int(values[2])
+        # parse error in data_id:GPGSV values:['$GPGSV', '1', '1', '01', '18', '', '', '28']
         total_sv = int(values[3])
         for sv_in_message in range(4):
             sv_num = ((message_number - 1) * 4 + sv_in_message + 1)
             if sv_num > total_sv:
                 break
+            el_degree = values[5 + sv_in_message * 4]
+            az_degree = values[6 + sv_in_message * 4]
+            if len(az_degree)==0 :
+                az_degree = 0
+            if len(el_degree)==0:
+                el_degree = 0
+
             message = {
                 'data_id': data_id,
                 # 'total_messages': total_messages,
@@ -304,12 +354,14 @@ class GpsDevice:
                 'sv_num': sv_num,
                 # 'sv_in_message': sv_in_message,
                 'sv_prn': values[4 + sv_in_message * 4],
-                'el_degree': int(values[5 + sv_in_message * 4]),
-                'az_degree': int(values[6 + sv_in_message * 4]),
+                'el_degree': int(el_degree),
+                'az_degree': int(az_degree),
             }
             srn = values[7 + sv_in_message * 4]
             if len(srn) > 0:
                 message['srn'] = int(srn)
+            else:
+                message['srn'] = 0
             result.append(message)
 
     def _parse_GPGSA(self, data_id, values, result):
@@ -534,6 +586,9 @@ if __name__ == '__main__':
             if 'MQTT' in device_exporter:
                 mqtt_exporter = MqttExporter(device_id)
                 device.add(mqtt_exporter)
+            if 'QUEUE' in device_exporter:
+                queue_exporter = QueueExporter(device_id)
+                device.add(queue_exporter)
 
             try:
                 device.run()

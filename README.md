@@ -254,6 +254,8 @@ $GPGLL,3537.51961,N,13941.60464,E,013728.00,A,A*60
 - http://www.spa-japan.co.jp/tech/Tech103_UbloxNmea.html
 - http://aprs.gids.nl/nmea/
 
+### 動画配信
+https://github.com/shiguredo/momo/blob/develop/doc/SETUP_RASPBERRY_PI.md
 
 ## MQTT証明書発行
 
