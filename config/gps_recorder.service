@@ -1,0 +1,15 @@
+[Unit]
+Description=GPS Recorder
+
+[Service]
+ExecStart=python src/app_cmd.py
+Restart=always
+Type=forking
+User=pi
+Group=users
+PIDFile=/var/run/gps_recorder.pid
+EnvironmentFile=/home/pi/gps-recorder/config/env/gps_recorder.env
+WorkingDirectory=/home/pi/gps-recorder
+
+[Install]
+WantedBy=multi-user.target

@@ -81,6 +81,7 @@ def update_position(message):
         location=[st.session_state['lat'], st.session_state['lon']],
         popup=f'{datetime.now(JST).strftime("%Y/%m/%d %H:%M:%S")}:{observer.lat},{observer.lon}'
     ).add_to(folium_map)
+    folium_map.location=[st.session_state['lat'], st.session_state['lon']]
     with placeholder_map:
         folium_static(folium_map)
     return marker
@@ -328,6 +329,7 @@ while True:
                 last_position_update = now
 
         if message['data_id'][-3:] == 'GSV':
+            print(message)
             sv_prn = message['sv_prn']
             sv_prn = f'G{sv_prn}'
             if sv_prn not in datas:
