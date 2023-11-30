@@ -80,7 +80,6 @@ def draw(datas):
         srn_max.append(stats[key]['srn_max'])
 
     fig = make_subplots(rows=1, cols=2, specs=[[{'type': 'polar'}, {'type':'xy'}]])
-
     fig.add_traces(
         data=[go.Scatterpolar(
             theta=np.array(azimuths_radians)*180/np.pi,
@@ -92,7 +91,7 @@ def draw(datas):
         ),
         go.Bar(
             x=keys,
-            y=srn,
+            y=srns,
             xaxis='x1',
             yaxis='y1'
         ),

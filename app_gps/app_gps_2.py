@@ -148,10 +148,11 @@ def update_gnss(datas):
         'srn',
         'srn_max',
         'el_degree',
-        'el_degree_n',
+        # 'el_degree_n',
         'az_degree',
-        'az_degree_n',
-        'last_update']],)
+        # 'az_degree_n',
+        'last_update',
+    ]],)
 
     fig = make_subplots(rows=1, cols=2, specs=[[{'type': 'polar'}, {'type': 'xy'}]])
 
